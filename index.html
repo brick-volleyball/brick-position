@@ -402,6 +402,24 @@
     cursor:pointer;
   }
   .seg button.active{background:var(--turquoise);color:#0f1626;border-color:var(--turquoise);font-weight:700;}
+  /* ポジション選択(6人制/9人制を左右2列で表示。9人制側は前衛/ハーフ/後衛の並びをコートに見立てた3列グリッド) */
+  .pos-columns{display:flex;gap:10px;}
+  .pos-col{flex:1;min-width:0;}
+  .pos-col-title{font-size:11px;font-weight:700;color:var(--turquoise);text-align:center;margin-bottom:6px;letter-spacing:.03em;}
+  .pos-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:5px;}
+  .pos-grid button{
+    background:var(--panel2);
+    border:1px solid var(--border);
+    color:var(--text);
+    padding:7px 2px;
+    border-radius:7px;
+    font-size:11px;
+    cursor:pointer;
+    min-width:0;
+  }
+  .pos-grid button.active{background:var(--turquoise);color:#0f1626;border-color:var(--turquoise);font-weight:700;}
+  .pos-grid-bottom{margin-top:7px;padding-top:7px;border-top:1px dashed var(--border);margin-bottom:0;}
+  .pos-grid-2{grid-template-columns:repeat(2,1fr);}
   .swatches{display:flex;gap:8px;flex-wrap:wrap;}
   .swatch{
     width:30px;height:30px;border-radius:50%;
@@ -744,33 +762,45 @@
             <label class="filebtn">画像を選択<input type="file" accept="image/*" id="newMemberImage"></label>
           </div>
           <div class="field">
-            <label>6人制のポジション(右上に小さくバッジ表示・任意)</label>
-            <div class="seg" id="newMemberPosition6Seg">
-              <button data-v="" class="active" title="バッジなし">なし</button>
-              <button data-v="S" title="セッター">S</button>
-              <button data-v="OH" title="アウトサイドヒッター">OH</button>
-              <button data-v="MB" title="ミドルブロッカー">MB</button>
-              <button data-v="OP" title="オポジット">OP</button>
-              <button data-v="L" title="リベロ">L</button>
+            <label>ポジション(右上に小さくバッジ表示・任意。6人制用/9人制用をそれぞれ個別に設定できます)</label>
+            <div class="pos-columns">
+              <div class="pos-col">
+                <div class="pos-col-title">6人制</div>
+                <div class="pos-grid">
+                  <button class="pos6-btn" data-v="OH" title="アウトサイドヒッター">OH</button>
+                  <button class="pos6-btn" data-v="MB" title="ミドルブロッカー">MB</button>
+                  <button class="pos6-btn" data-v="OP" title="オポジット">OP</button>
+                </div>
+                <div class="pos-grid pos-grid-bottom">
+                  <button class="pos6-btn active" data-v="" title="バッジなし">なし</button>
+                  <button class="pos6-btn" data-v="S" title="セッター">S</button>
+                  <button class="pos6-btn" data-v="L" title="リベロ">L</button>
+                </div>
+              </div>
+              <div class="pos-col">
+                <div class="pos-col-title">9人制</div>
+                <div class="pos-grid">
+                  <button class="pos9-btn" data-v="FL" title="フロント左">FL</button>
+                  <button class="pos9-btn" data-v="FC" title="フロント中">FC</button>
+                  <button class="pos9-btn" data-v="FR" title="フロント右">FR</button>
+                </div>
+                <div class="pos-grid">
+                  <button class="pos9-btn" data-v="HL" title="ハーフ左">HL</button>
+                  <button class="pos9-btn" data-v="HC" title="ハーフ中">HC</button>
+                  <button class="pos9-btn" data-v="HR" title="ハーフ右">HR</button>
+                </div>
+                <div class="pos-grid">
+                  <button class="pos9-btn" data-v="BL" title="バック左">BL</button>
+                  <button class="pos9-btn" data-v="BC" title="バック中">BC</button>
+                  <button class="pos9-btn" data-v="BR" title="バック右">BR</button>
+                </div>
+                <div class="pos-grid pos-grid-bottom pos-grid-2">
+                  <button class="pos9-btn active" data-v="" title="バッジなし">なし</button>
+                  <button class="pos9-btn" data-v="S" title="セッター">S</button>
+                </div>
+              </div>
             </div>
-            <div class="hint">S=セッター / OH=アウトサイドヒッター / MB=ミドルブロッカー / OP=オポジット / L=リベロ</div>
-          </div>
-          <div class="field">
-            <label>9人制のポジション(右上に小さくバッジ表示・任意)</label>
-            <div class="seg" id="newMemberPosition9Seg">
-              <button data-v="" class="active" title="バッジなし">なし</button>
-              <button data-v="S" title="セッター">S</button>
-              <button data-v="FL" title="フロント左">FL</button>
-              <button data-v="FC" title="フロント中">FC</button>
-              <button data-v="FR" title="フロント右">FR</button>
-              <button data-v="HL" title="ハーフ左">HL</button>
-              <button data-v="HC" title="ハーフ中">HC</button>
-              <button data-v="HR" title="ハーフ右">HR</button>
-              <button data-v="BL" title="バック左">BL</button>
-              <button data-v="BC" title="バック中">BC</button>
-              <button data-v="BR" title="バック右">BR</button>
-            </div>
-            <div class="hint">S=セッター / F=フロント(前衛)・H=ハーフ(中衛)・B=バック(後衛) / L=左・C=中・R=右。6人制のポジションとは別に、9人制用として個別に設定できます。</div>
+            <div class="hint">6人制は上段=OH/MB/OP(アタック系)・下段=なし/S/L。9人制は上から前衛(フロント)/中衛(ハーフ)/後衛(バック)の左中右・下段=なし/S(9人制にリベロはありません)。</div>
           </div>
           <div class="checkbox-row">
             <input type="checkbox" id="newMemberCustomColor"><label for="newMemberCustomColor">この人だけ枠線色を個別に指定する</label>
@@ -878,7 +908,7 @@
 "use strict";
 
 /* ========================= 定数 ========================= */
-const APP_VERSION = "v2026-08-26 17:10";
+const APP_VERSION = "v2026-08-26 17:45";
 const LS_KEY_ROSTER = "brickpos_roster_v1";
 const LS_KEY_SETTINGS = "brickpos_settings_v1";
 const LS_KEY_LAYOUT = "brickpos_layout_v1";
@@ -1893,15 +1923,15 @@ document.querySelectorAll('#newMemberTypeSeg button').forEach(btn=>{
     document.getElementById('newMemberImageWrap').style.display = isImg ? 'block':'none';
   });
 });
-document.querySelectorAll('#newMemberPosition6Seg button').forEach(btn=>{
+document.querySelectorAll('.pos6-btn').forEach(btn=>{
   btn.addEventListener('click', ()=>{
-    document.querySelectorAll('#newMemberPosition6Seg button').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.pos6-btn').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
   });
 });
-document.querySelectorAll('#newMemberPosition9Seg button').forEach(btn=>{
+document.querySelectorAll('.pos9-btn').forEach(btn=>{
   btn.addEventListener('click', ()=>{
-    document.querySelectorAll('#newMemberPosition9Seg button').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.pos9-btn').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
   });
 });
@@ -1951,8 +1981,8 @@ function resetMemberForm(){
   document.getElementById('newMemberImage').value = '';
   document.getElementById('newMemberImagePreviewWrap').style.display = 'none';
   setMemberFormType('number');
-  document.querySelectorAll('#newMemberPosition6Seg button').forEach((b,i)=>b.classList.toggle('active', i===0));
-  document.querySelectorAll('#newMemberPosition9Seg button').forEach((b,i)=>b.classList.toggle('active', i===0));
+  document.querySelectorAll('.pos6-btn').forEach(b=> b.classList.toggle('active', b.dataset.v===''));
+  document.querySelectorAll('.pos9-btn').forEach(b=> b.classList.toggle('active', b.dataset.v===''));
   document.getElementById('newMemberCustomColor').checked = false;
   document.getElementById('newMemberColorWrap').style.display = 'none';
   newMemberColor = SWATCH_COLORS[0];
@@ -1981,8 +2011,8 @@ function startEditMember(id){
   } else {
     previewWrap.style.display = 'none';
   }
-  document.querySelectorAll('#newMemberPosition6Seg button').forEach(b=>b.classList.toggle('active', b.dataset.v === (m.position6||'')));
-  document.querySelectorAll('#newMemberPosition9Seg button').forEach(b=>b.classList.toggle('active', b.dataset.v === (m.position9||'')));
+  document.querySelectorAll('.pos6-btn').forEach(b=>b.classList.toggle('active', b.dataset.v === (m.position6||'')));
+  document.querySelectorAll('.pos9-btn').forEach(b=>b.classList.toggle('active', b.dataset.v === (m.position9||'')));
   document.getElementById('newMemberCustomColor').checked = !!m.customColor;
   document.getElementById('newMemberColorWrap').style.display = m.customColor ? 'block':'none';
   newMemberColor = m.color || SWATCH_COLORS[0];
@@ -2004,8 +2034,8 @@ document.getElementById('addMemberBtn').addEventListener('click', ()=>{
   const name = document.getElementById('newMemberName').value.trim();
   const type = document.querySelector('#newMemberTypeSeg button.active').dataset.v;
   const value = document.getElementById('newMemberValue').value.trim();
-  const position6 = document.querySelector('#newMemberPosition6Seg button.active').dataset.v;
-  const position9 = document.querySelector('#newMemberPosition9Seg button.active').dataset.v;
+  const position6 = document.querySelector('.pos6-btn.active').dataset.v;
+  const position9 = document.querySelector('.pos9-btn.active').dataset.v;
   const customColor = document.getElementById('newMemberCustomColor').checked;
   const resolvedImageData = type === 'image' ? (newMemberImageData || (editingMemberId ? editingOriginalImageData : null)) : null;
 
