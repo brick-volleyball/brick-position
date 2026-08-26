@@ -204,7 +204,7 @@
     line-height:1;
     white-space:nowrap;
   }
-  /* 色は POSITION_META に基づき各バッジへインラインで指定 */
+  /* 色は POSITION_META_6 / POSITION_META_9 に基づき各バッジへインラインで指定 */
   .chip .chip-name{
     font-size:9px;
     color:var(--sub);
@@ -744,8 +744,8 @@
             <label class="filebtn">画像を選択<input type="file" accept="image/*" id="newMemberImage"></label>
           </div>
           <div class="field">
-            <label>ポジション(右上に小さくバッジ表示・任意)</label>
-            <div class="seg" id="newMemberPositionSeg">
+            <label>6人制のポジション(右上に小さくバッジ表示・任意)</label>
+            <div class="seg" id="newMemberPosition6Seg">
               <button data-v="" class="active" title="バッジなし">なし</button>
               <button data-v="S" title="セッター">S</button>
               <button data-v="OH" title="アウトサイドヒッター">OH</button>
@@ -754,6 +754,23 @@
               <button data-v="L" title="リベロ">L</button>
             </div>
             <div class="hint">S=セッター / OH=アウトサイドヒッター / MB=ミドルブロッカー / OP=オポジット / L=リベロ</div>
+          </div>
+          <div class="field">
+            <label>9人制のポジション(右上に小さくバッジ表示・任意)</label>
+            <div class="seg" id="newMemberPosition9Seg">
+              <button data-v="" class="active" title="バッジなし">なし</button>
+              <button data-v="S" title="セッター">S</button>
+              <button data-v="FL" title="フロント左">FL</button>
+              <button data-v="FC" title="フロント中">FC</button>
+              <button data-v="FR" title="フロント右">FR</button>
+              <button data-v="HL" title="ハーフ左">HL</button>
+              <button data-v="HC" title="ハーフ中">HC</button>
+              <button data-v="HR" title="ハーフ右">HR</button>
+              <button data-v="BL" title="バック左">BL</button>
+              <button data-v="BC" title="バック中">BC</button>
+              <button data-v="BR" title="バック右">BR</button>
+            </div>
+            <div class="hint">S=セッター / F=フロント(前衛)・H=ハーフ(中衛)・B=バック(後衛) / L=左・C=中・R=右。6人制のポジションとは別に、9人制用として個別に設定できます。</div>
           </div>
           <div class="checkbox-row">
             <input type="checkbox" id="newMemberCustomColor"><label for="newMemberCustomColor">この人だけ枠線色を個別に指定する</label>
@@ -792,13 +809,16 @@
         <hr class="sep">
         <div class="field">
           <label>配置モード</label>
-          <div class="seg" id="modeSeg">
-            <button data-v="fixed6">6人制(固定)</button>
-            <button data-v="free6">6人制(自由配置)</button>
-            <button data-v="free9">9人制(自由配置)</button>
+          <div class="seg" id="systemSeg">
+            <button data-v="six">6人制</button>
+            <button data-v="nine">9人制</button>
             <button data-v="unlimited">制限なし</button>
           </div>
-          <div class="hint">モードを切り替えるとコート上の配置はリセットされます(名簿は消えません)。</div>
+          <div class="seg" id="submodeSeg" style="margin-top:8px;">
+            <button data-v="fixed">固定配置</button>
+            <button data-v="free">自由配置</button>
+          </div>
+          <div class="hint">6人制・9人制は、それぞれ「固定配置」「自由配置」を切り替えられます。どちらも、最後に使っていたサブモードとコート上の配置を自動的に記憶するので、他のモードへ切り替えても消えません。</div>
         </div>
         <hr class="sep">
         <div class="field">
@@ -844,7 +864,7 @@
           <input type="text" id="saveLayoutNameInput" placeholder="例: ○○戦オーダー / ローテーション1">
         </div>
         <button class="btn btn-primary" id="saveCurrentLayoutBtn" style="width:100%;">💾 現在の配置を保存</button>
-        <div class="hint" style="margin-top:8px;">配置モード(6人制固定/自由配置/9人制/制限なし)も一緒に記録されます。呼び出す際、今のモードと違う場合はモードごと切り替わります。</div>
+        <div class="hint" style="margin-top:8px;">配置モード(6人制固定/自由配置・9人制固定/自由配置・制限なし)も一緒に記録されます。呼び出す際、今のモードと違う場合はモードごと切り替わります。</div>
       </div>
       <div id="savedLayoutsList" style="margin-top:14px;"></div>
     </div>
@@ -858,7 +878,7 @@
 "use strict";
 
 /* ========================= 定数 ========================= */
-const APP_VERSION = "v2026-08-26 15:35";
+const APP_VERSION = "v2026-08-26 17:10";
 const LS_KEY_ROSTER = "brickpos_roster_v1";
 const LS_KEY_SETTINGS = "brickpos_settings_v1";
 const LS_KEY_LAYOUT = "brickpos_layout_v1";
@@ -869,12 +889,27 @@ const IDB_KEY_DIR = "saveDir";
 const SWATCH_COLORS = ["#ffffff","#4FC3D9","#FFD166","#EF476F","#06D6A0","#8A5CF6","#F4A259"];
 
 // ポジションバッジの定義(トークン右上に小さく表示する1文字/2文字バッジ)
-const POSITION_META = {
+// 6人制と9人制ではポジションの考え方が異なるため、メンバーごとに別々のフィールド(position6/position9)で保持し、
+// 表示するバッジも「今どちらのシステムのモードを見ているか」によって切り替える(下記 memberBadge() 参照)
+const POSITION_META_6 = {
   S:  {label:"セッター",           bg:"#4FC3D9", fg:"#0f2a30"},
   OH: {label:"アウトサイドヒッター", bg:"#06D6A0", fg:"#06301f"},
   MB: {label:"ミドルブロッカー",     bg:"#8A5CF6", fg:"#ffffff"},
   OP: {label:"オポジット",          bg:"#EF476F", fg:"#ffffff"},
   L:  {label:"リベロ",             bg:"#FFD166", fg:"#3a2a00"}
+};
+// 9人制(混合バレー)は前衛/ハーフ/後衛の3列×左中右の9ゾーン+セッターで表現
+const POSITION_META_9 = {
+  S:  {label:"セッター",   bg:"#4FC3D9", fg:"#0f2a30"},
+  FL: {label:"フロント左", bg:"#06D6A0", fg:"#06301f"},
+  FC: {label:"フロント中", bg:"#06D6A0", fg:"#06301f"},
+  FR: {label:"フロント右", bg:"#06D6A0", fg:"#06301f"},
+  HL: {label:"ハーフ左",   bg:"#8A5CF6", fg:"#ffffff"},
+  HC: {label:"ハーフ中",   bg:"#8A5CF6", fg:"#ffffff"},
+  HR: {label:"ハーフ右",   bg:"#8A5CF6", fg:"#ffffff"},
+  BL: {label:"バック左",   bg:"#FFD166", fg:"#3a2a00"},
+  BC: {label:"バック中",   bg:"#FFD166", fg:"#3a2a00"},
+  BR: {label:"バック右",   bg:"#FFD166", fg:"#3a2a00"}
 };
 
 const COURT_W = 720, COURT_H = 720; // 論理描画サイズ(正方形。6人制コート=9m四方、9人制コート=10m四方だが、いずれも正方形なので同じ描画枠を使用)
@@ -889,46 +924,94 @@ const attackLineY = courtTop + courtDepth * (3/9); // ネットから3m(6人制9
 const TOKEN_R = 40; // トークン半径(論理px)
 
 /* ========================= 状態 ========================= */
-let roster = [];      // {id,name,type,value,imageData,position('' |'S'|'OH'|'MB'|'OP'|'L'),customColor,color}
+let roster = [];      // {id,name,type,value,imageData,position6('' |'S'|'OH'|'MB'|'OP'|'L'),position9('' |'S'|'FL'|'FC'|'FR'|'HL'|'HC'|'HR'|'BL'|'BC'|'BR'),customColor,color}
 let settings = {
   shape: "circle",
   defaultColor: "#ffffff",
   courtBg: "orange",   // orange | wood | custom | plain
   customBgData: null,
-  mode: "fixed6",       // fixed6 | free6 | free9 | unlimited
+  mode: "fixed6",       // fixed6 | free6 | fixed9 | free9 | unlimited
+  submode6: "fixed",    // fixed | free (6人制で最後に使っていたサブモードを記憶)
+  submode9: "fixed",    // fixed | free (9人制で最後に使っていたサブモードを記憶)
   showGrid: true,
   gridDivision: "6",    // "6"(2行×3列) | "9"(3行×3列)。モードに関わらず選択可能
   saveFolderName: null
 };
-let layout = {
-  label: "",
-  // fixed6用: スロットID -> memberId
-  slots: { FL:null, FC:null, FR:null, BR:null, BC:null, BL:null },
-  // free系用: memberId -> {x,y}(0-1の court内相対座標)
-  placements: {}
-};
+
+// モードごとのコート配置を独立して記憶する({モード名: {label, slots|slots9|placements}})。
+// settings.mode を切り替えるたびに `layout` は該当モードのオブジェクトへ差し替わるだけで、
+// 他モードのデータは保持されたまま(モード切替で配置が消えないようにする)
+let layoutByMode = null;
+let layout = null; // layoutByMode[settings.mode] への参照(切替のたびに再代入)
 
 let dragState = null; // {id, sourceType:'court'|'bench', offsetX, offsetY}
 let dirHandle = null; // FileSystemDirectoryHandle (メモリ上、IndexedDBにも保存)
 
 const SLOT_ORDER = ["FL","FC","FR","BR","BC","BL"];
 const SLOT_LABELS = {FL:"前衛左",FC:"前衛中",FR:"前衛右",BR:"後衛右",BC:"後衛中",BL:"後衛左"};
+// 9人制固定配置: 前衛/ハーフ/後衛の3行×左中右(9スロット)。ローテーションボタンは付けない(手動入れ替えのみ)
+const SLOT_ORDER_9 = ["FL","FC","FR","HL","HC","HR","BL","BC","BR"];
+const SLOT_LABELS_9 = {FL:"フロント左",FC:"フロント中",FR:"フロント右",HL:"ハーフ左",HC:"ハーフ中",HR:"ハーフ右",BL:"バック左",BC:"バック中",BR:"バック右"};
+const MODE_LIST = ["fixed6","free6","fixed9","free9","unlimited"];
 
 /* ========================= ユーティリティ ========================= */
 function uid(){ return 'm_' + Math.random().toString(36).slice(2,10) + Date.now().toString(36); }
 
 function saveRoster(){ localStorage.setItem(LS_KEY_ROSTER, JSON.stringify(roster)); }
 function saveSettings(){ localStorage.setItem(LS_KEY_SETTINGS, JSON.stringify(settings)); }
-function saveLayout(){ localStorage.setItem(LS_KEY_LAYOUT, JSON.stringify(layout)); }
+function saveLayout(){ localStorage.setItem(LS_KEY_LAYOUT, JSON.stringify(layoutByMode)); }
+
+function emptySlots6(){ return {FL:null,FC:null,FR:null,BR:null,BC:null,BL:null}; }
+function emptySlots9(){ const o={}; SLOT_ORDER_9.forEach(s=>o[s]=null); return o; }
+function defaultLayoutForMode(mode){
+  if(mode === 'fixed6') return {label:"", slots:emptySlots6()};
+  if(mode === 'fixed9') return {label:"", slots9:emptySlots9()};
+  return {label:"", placements:{}}; // free6 | free9 | unlimited
+}
+// layoutByMode に全モード分のエントリが揃っていることを保証する(初回起動・旧データ移行・
+// 保存データの部分欠損いずれにも対応)
+function ensureLayoutByMode(){
+  if(!layoutByMode || typeof layoutByMode !== 'object') layoutByMode = {};
+  MODE_LIST.forEach(m=>{
+    if(!layoutByMode[m] || typeof layoutByMode[m] !== 'object') layoutByMode[m] = defaultLayoutForMode(m);
+    if(layoutByMode[m].label === undefined) layoutByMode[m].label = "";
+    if(m === 'fixed6' && !layoutByMode[m].slots) layoutByMode[m].slots = emptySlots6();
+    if(m === 'fixed9' && !layoutByMode[m].slots9) layoutByMode[m].slots9 = emptySlots9();
+    if((m === 'free6' || m === 'free9' || m === 'unlimited') && !layoutByMode[m].placements) layoutByMode[m].placements = {};
+  });
+}
+
+function systemOfMode(mode){
+  if(mode === 'fixed9' || mode === 'free9') return 'nine';
+  if(mode === 'fixed6' || mode === 'free6') return 'six';
+  return 'unlimited';
+}
+function modeFor(system, submode){
+  if(system === 'six') return submode === 'free' ? 'free6' : 'fixed6';
+  if(system === 'nine') return submode === 'free' ? 'free9' : 'fixed9';
+  return 'unlimited';
+}
+function isFixedMode(mode){ return mode === 'fixed6' || mode === 'fixed9'; }
+function slotOrderForMode(mode){ return mode === 'fixed6' ? SLOT_ORDER : (mode === 'fixed9' ? SLOT_ORDER_9 : null); }
+function slotCoordForMode(mode, slot){ return mode === 'fixed9' ? slotCoord9(slot) : slotCoord(slot); }
+// 現在アクティブな layout オブジェクトから、指定モードのスロット辞書(fixed6/fixed9のみ)を取り出す。
+// layout は常に settings.mode に対応するオブジェクトを指しているので、mode には基本 settings.mode を渡す
+function slotsObjForMode(mode){
+  if(mode === 'fixed6') return layout.slots;
+  if(mode === 'fixed9') return layout.slots9;
+  return null;
+}
 
 function loadAll(){
   try{ const r = localStorage.getItem(LS_KEY_ROSTER); if(r) roster = JSON.parse(r); }catch(e){}
   try{ const s = localStorage.getItem(LS_KEY_SETTINGS); if(s) Object.assign(settings, JSON.parse(s)); }catch(e){}
-  try{ const l = localStorage.getItem(LS_KEY_LAYOUT); if(l) Object.assign(layout, JSON.parse(l)); }catch(e){}
-  // 旧バージョン(setter/liberoの2つの真偽値)からの移行: position(単一選択)へ変換
+  let rawLayout = null;
+  try{ const l = localStorage.getItem(LS_KEY_LAYOUT); if(l) rawLayout = JSON.parse(l); }catch(e){}
+
   let migrated = false;
+  // 旧バージョン(setter/liberoの2つの真偽値)からの移行: position(単一選択)へ変換
   roster.forEach(m=>{
-    if(m.position === undefined){
+    if(m.position === undefined && m.position6 === undefined){
       if(m.libero) m.position = 'L';
       else if(m.setter) m.position = 'S';
       else m.position = '';
@@ -936,11 +1019,64 @@ function loadAll(){
       migrated = true;
     }
   });
+  // 旧バージョン(6人制のみの単一positionフィールド)から、6人制用/9人制用の別フィールドへ移行。
+  // 9人制側は判定基準が異なるため空欄からのスタートとし、必要に応じて設定し直してもらう
+  roster.forEach(m=>{
+    if(m.position6 === undefined){
+      m.position6 = m.position || '';
+      if(m.position9 === undefined) m.position9 = '';
+      delete m.position;
+      migrated = true;
+    }
+  });
   if(migrated) saveRoster();
-  // レイアウトの整合性チェック(存在しないメンバーIDを除去)
+
+  if(!MODE_LIST.includes(settings.mode)) settings.mode = 'fixed6';
+
+  // レイアウトの移行: 旧形式(モード名で分かれていない単一レイアウト{label,slots,placements})は、
+  // 保存時点のsettings.mode(旧設定)のレイアウトとして割り当てる
+  let layoutMigrated = false;
+  if(rawLayout && typeof rawLayout === 'object'){
+    const looksNew = MODE_LIST.some(m => rawLayout[m] && typeof rawLayout[m] === 'object');
+    if(looksNew){
+      layoutByMode = rawLayout;
+    } else if(rawLayout.slots || rawLayout.placements || rawLayout.label !== undefined){
+      layoutByMode = {};
+      ensureLayoutByMode();
+      const oldMode = settings.mode;
+      if(oldMode === 'fixed6'){
+        layoutByMode[oldMode] = {label: rawLayout.label || "", slots: Object.assign(emptySlots6(), rawLayout.slots||{})};
+      } else {
+        layoutByMode[oldMode] = {label: rawLayout.label || "", placements: Object.assign({}, rawLayout.placements||{})};
+      }
+      layoutMigrated = true;
+    }
+  }
+  ensureLayoutByMode();
+  layout = layoutByMode[settings.mode];
+  if(layoutMigrated) saveLayout();
+
+  // レイアウトの整合性チェック(存在しないメンバーIDを除去)。全モード分まとめて行う
   const ids = new Set(roster.map(m=>m.id));
-  Object.keys(layout.slots).forEach(k=>{ if(layout.slots[k] && !ids.has(layout.slots[k])) layout.slots[k]=null; });
-  Object.keys(layout.placements).forEach(k=>{ if(!ids.has(k)) delete layout.placements[k]; });
+  MODE_LIST.forEach(m=>{
+    const lm = layoutByMode[m];
+    if(lm.slots) Object.keys(lm.slots).forEach(k=>{ if(lm.slots[k] && !ids.has(lm.slots[k])) lm.slots[k]=null; });
+    if(lm.slots9) Object.keys(lm.slots9).forEach(k=>{ if(lm.slots9[k] && !ids.has(lm.slots9[k])) lm.slots9[k]=null; });
+    if(lm.placements) Object.keys(lm.placements).forEach(k=>{ if(!ids.has(k)) delete lm.placements[k]; });
+  });
+}
+
+// メンバーを名簿から削除する際、そのメンバーが「今表示していないモード」に配置されたままに
+// ならないよう、全モードのレイアウトから一括で除去する
+function purgeMemberFromAllLayouts(id){
+  ensureLayoutByMode();
+  MODE_LIST.forEach(m=>{
+    const lm = layoutByMode[m];
+    if(lm.slots) Object.keys(lm.slots).forEach(k=>{ if(lm.slots[k]===id) lm.slots[k]=null; });
+    if(lm.slots9) Object.keys(lm.slots9).forEach(k=>{ if(lm.slots9[k]===id) lm.slots9[k]=null; });
+    if(lm.placements && lm.placements[id] !== undefined) delete lm.placements[id];
+  });
+  saveLayout();
 }
 
 function toast(msg){
@@ -953,19 +1089,19 @@ function toast(msg){
 
 function capacityForMode(mode){
   if(mode === 'fixed6' || mode === 'free6') return 6;
-  if(mode === 'free9') return 9;
+  if(mode === 'fixed9' || mode === 'free9') return 9;
   return Infinity;
 }
 
 function placedMemberIds(){
-  if(settings.mode === 'fixed6'){
-    return Object.values(layout.slots).filter(Boolean);
-  }
+  const s = slotsObjForMode(settings.mode);
+  if(s) return Object.values(s).filter(Boolean);
   return Object.keys(layout.placements);
 }
 
 function isPlaced(id){
-  if(settings.mode === 'fixed6') return Object.values(layout.slots).includes(id);
+  const s = slotsObjForMode(settings.mode);
+  if(s) return Object.values(s).includes(id);
   return !!layout.placements[id];
 }
 
@@ -1087,6 +1223,18 @@ function slotCoord(slot){
   return map[slot];
 }
 
+// 9人制固定配置: 前衛/ハーフ/後衛の3行×左中右(9分割グリッドと同じ位置=各セルの中心)
+function slotCoord9(slot){
+  const colX = { L: courtLeft+courtWidth/6, C: courtLeft+courtWidth/2, R: courtRight-courtWidth/6 };
+  const rowY = { F: courtTop+courtDepth/6, H: courtTop+courtDepth/2, B: courtBottom-courtDepth/6 };
+  const map = {
+    FL:{x:colX.L,y:rowY.F}, FC:{x:colX.C,y:rowY.F}, FR:{x:colX.R,y:rowY.F},
+    HL:{x:colX.L,y:rowY.H}, HC:{x:colX.C,y:rowY.H}, HR:{x:colX.R,y:rowY.H},
+    BL:{x:colX.L,y:rowY.B}, BC:{x:colX.C,y:rowY.B}, BR:{x:colX.R,y:rowY.B}
+  };
+  return map[slot];
+}
+
 function drawEmptySlotMarker(ctx, x, y){
   ctx.save();
   ctx.strokeStyle = 'rgba(255,255,255,.6)';
@@ -1101,6 +1249,17 @@ function drawEmptySlotMarker(ctx, x, y){
 }
 
 function memberById(id){ return roster.find(m=>m.id===id); }
+
+// 現在表示中のモードが6人制系か9人制系かによって、表示するバッジ(position6 / position9)を切り替える。
+// 「制限なし」モードは6人制/9人制どちらにも属さないため、既定として6人制側のポジションを表示する
+function memberBadge(member){
+  if(!member) return null;
+  const sys = systemOfMode(settings.mode);
+  if(sys === 'nine'){
+    return (member.position9 && POSITION_META_9[member.position9]) ? {code:member.position9, meta:POSITION_META_9[member.position9]} : null;
+  }
+  return (member.position6 && POSITION_META_6[member.position6]) ? {code:member.position6, meta:POSITION_META_6[member.position6]} : null;
+}
 
 function drawToken(ctx, member, x, y){
   if(!member) return;
@@ -1132,10 +1291,11 @@ function drawToken(ctx, member, x, y){
   ctx.shadowBlur = 4;
   ctx.stroke();
   ctx.shadowBlur = 0;
-  // ポジションバッジ(S/OH/MB/OP/L)。トークン右上に表示
-  if(member.position && POSITION_META[member.position]){
-    const meta = POSITION_META[member.position];
-    const label = member.position;
+  // ポジションバッジ。トークン右上に表示(6人制/9人制どちらのモードを見ているかで出し分け)
+  const badge = memberBadge(member);
+  if(badge){
+    const meta = badge.meta;
+    const label = badge.code;
     ctx.font = 'bold 15px sans-serif';
     const textW = ctx.measureText(label).width;
     const padX = 7;
@@ -1223,11 +1383,13 @@ function render(){
   drawCourtLines(ctx);
   drawGuideGrid(ctx);
 
-  if(settings.mode === 'fixed6'){
+  if(isFixedMode(settings.mode)){
+    const order = slotOrderForMode(settings.mode);
+    const slotsObj = slotsObjForMode(settings.mode);
     const draggingId = (dragState && dragState.dragging) ? dragState.id : null;
     const hoverSlot = (dragState && dragState.dragging) ? dragState.hoverSlot : null;
-    SLOT_ORDER.forEach(slot=>{
-      const {x,y} = slotCoord(slot);
+    order.forEach(slot=>{
+      const {x,y} = slotCoordForMode(settings.mode, slot);
       if(slot === hoverSlot){
         ctx.save();
         ctx.strokeStyle = 'rgba(79,195,217,.95)';
@@ -1235,7 +1397,7 @@ function render(){
         ctx.beginPath(); ctx.arc(x,y,TOKEN_R+7,0,Math.PI*2); ctx.stroke();
         ctx.restore();
       }
-      const mid = layout.slots[slot];
+      const mid = slotsObj[slot];
       if(mid && mid !== draggingId){ drawToken(ctx, memberById(mid), x, y); }
       else if(!mid || mid === draggingId){ drawEmptySlotMarker(ctx, x, y); }
     });
@@ -1265,10 +1427,12 @@ function renderForExport(){
   cx.scale(scale,scale);
   drawCourtBackground(cx);
   drawCourtLines(cx);
-  if(settings.mode === 'fixed6'){
-    SLOT_ORDER.forEach(slot=>{
-      const {x,y} = slotCoord(slot);
-      const mid = layout.slots[slot];
+  if(isFixedMode(settings.mode)){
+    const order = slotOrderForMode(settings.mode);
+    const slotsObj = slotsObjForMode(settings.mode);
+    order.forEach(slot=>{
+      const {x,y} = slotCoordForMode(settings.mode, slot);
+      const mid = slotsObj[slot];
       if(mid) drawToken(cx, memberById(mid), x, y);
     });
   } else {
@@ -1304,11 +1468,13 @@ function canvasPointFromEvent(e){
 }
 
 function hitTestCourt(x,y){
-  if(settings.mode === 'fixed6'){
-    for(const slot of SLOT_ORDER){
-      const mid = layout.slots[slot];
+  if(isFixedMode(settings.mode)){
+    const order = slotOrderForMode(settings.mode);
+    const slotsObj = slotsObjForMode(settings.mode);
+    for(const slot of order){
+      const mid = slotsObj[slot];
       if(!mid) continue;
-      const c = slotCoord(slot);
+      const c = slotCoordForMode(settings.mode, slot);
       if(Math.hypot(c.x-x, c.y-y) <= TOKEN_R+4) return {id:mid, slot};
     }
     return null;
@@ -1336,11 +1502,11 @@ canvas.addEventListener('pointermove', (e)=>{
   const pt = canvasPointFromEvent(e);
   const clampedX = Math.min(Math.max(pt.x, courtLeft), courtRight);
   const clampedY = Math.min(Math.max(pt.y, courtTop), courtBottom);
-  if(settings.mode === 'fixed6'){
+  if(isFixedMode(settings.mode)){
     // 固定モードはドラッグでスロット同士を入れ替え
     let nearestSlot = null, nearestD = Infinity;
-    SLOT_ORDER.forEach(slot=>{
-      const c = slotCoord(slot);
+    slotOrderForMode(settings.mode).forEach(slot=>{
+      const c = slotCoordForMode(settings.mode, slot);
       const d = Math.hypot(c.x-pt.x, c.y-pt.y);
       if(d < nearestD){ nearestD = d; nearestSlot = slot; }
     });
@@ -1358,13 +1524,14 @@ canvas.addEventListener('pointermove', (e)=>{
 });
 canvas.addEventListener('pointerup', (e)=>{
   if(!dragState || !dragState.dragging) return;
-  if(settings.mode === 'fixed6' && dragState.hoverSlot){
+  if(isFixedMode(settings.mode) && dragState.hoverSlot){
+    const slotsObj = slotsObjForMode(settings.mode);
     const targetSlot = dragState.hoverSlot;
     const fromSlot = dragState.fromSlot;
     if(targetSlot !== fromSlot){
-      const targetOccupant = layout.slots[targetSlot];
-      layout.slots[targetSlot] = dragState.id;
-      layout.slots[fromSlot] = targetOccupant || null;
+      const targetOccupant = slotsObj[targetSlot];
+      slotsObj[targetSlot] = dragState.id;
+      slotsObj[fromSlot] = targetOccupant || null;
     }
   }
   dragState = null;
@@ -1416,9 +1583,9 @@ function tokenFaceHTML(m){
   if(m.type === 'image' && m.imageData){ inner = '<img src="'+m.imageData+'">'; }
   else { inner = escapeHTML(m.value || '?'); }
   let badgeHTML = '';
-  if(m.position && POSITION_META[m.position]){
-    const meta = POSITION_META[m.position];
-    badgeHTML = '<span class="role-badge" style="background:'+meta.bg+';color:'+meta.fg+';">'+m.position+'</span>';
+  const badge = memberBadge(m);
+  if(badge){
+    badgeHTML = '<span class="role-badge" style="background:'+badge.meta.bg+';color:'+badge.meta.fg+';">'+badge.code+'</span>';
   }
   return '<span class="token-wrap"><div class="token-face" style="border-color:'+color+'">'+inner+'</div>'+badgeHTML+'</span>';
 }
@@ -1428,14 +1595,16 @@ function escapeHTML(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':
 function placeFromBench(id){
   const cap = capacityForMode(settings.mode);
   if(placedMemberIds().length >= cap){ toast('この配置モードでは最大'+cap+'人までです'); return; }
-  if(settings.mode === 'fixed6'){
-    const emptySlot = SLOT_ORDER.find(s => !layout.slots[s]);
+  if(isFixedMode(settings.mode)){
+    const order = slotOrderForMode(settings.mode);
+    const slotsObj = slotsObjForMode(settings.mode);
+    const emptySlot = order.find(s => !slotsObj[s]);
     if(!emptySlot){ toast('空いているスロットがありません'); return; }
-    layout.slots[emptySlot] = id;
+    slotsObj[emptySlot] = id;
   } else {
     // 空いている場所を軽く分散配置
     const n = Object.keys(layout.placements).length;
-    const cols = settings.mode === 'free9' || settings.mode === 'unlimited' ? 3 : 3;
+    const cols = 3;
     const col = n % cols, row = Math.floor(n / cols) % 3;
     layout.placements[id] = { x: (col+0.5)/cols, y: 0.18 + row*0.28 };
   }
@@ -1444,9 +1613,11 @@ function placeFromBench(id){
   requestRender();
 }
 
+// 「ベンチに戻す」操作(現在表示中のモードの配置からのみ外す)
 function returnToBench(id){
-  if(settings.mode === 'fixed6'){
-    SLOT_ORDER.forEach(s=>{ if(layout.slots[s]===id) layout.slots[s]=null; });
+  const s = slotsObjForMode(settings.mode);
+  if(s){
+    Object.keys(s).forEach(k=>{ if(s[k]===id) s[k]=null; });
   } else {
     delete layout.placements[id];
   }
@@ -1475,8 +1646,8 @@ function openCourtTokenMenu(id, slot){
     item.className = 'picker-item';
     item.innerHTML = tokenFaceHTML(m) + '<span>'+escapeHTML(m.name||'')+'に差替</span>';
     item.addEventListener('click', ()=>{
-      if(settings.mode === 'fixed6' && slot){
-        layout.slots[slot] = m.id;
+      if(isFixedMode(settings.mode) && slot){
+        slotsObjForMode(settings.mode)[slot] = m.id;
       } else {
         layout.placements[m.id] = layout.placements[id];
         delete layout.placements[id];
@@ -1535,19 +1706,48 @@ document.getElementById('rotateBtn').addEventListener('click', ()=>{
 
 document.getElementById('clearCourtBtn').addEventListener('click', ()=>{
   if(!confirm('コート上の配置をすべてベンチに戻します。よろしいですか？')) return;
-  layout.slots = {FL:null,FC:null,FR:null,BR:null,BC:null,BL:null};
-  layout.placements = {};
+  if(settings.mode === 'fixed6') layout.slots = emptySlots6();
+  else if(settings.mode === 'fixed9') layout.slots9 = emptySlots9();
+  else layout.placements = {};
   saveLayout();
   renderBench();
   requestRender();
 });
 
 /* ========================= モードバッジ / UI更新 ========================= */
-const MODE_NAMES = { fixed6:'6人制(固定)', free6:'6人制(自由配置)', free9:'9人制(自由配置)', unlimited:'制限なし' };
+const MODE_NAMES = { fixed6:'6人制(固定)', free6:'6人制(自由配置)', fixed9:'9人制(固定)', free9:'9人制(自由配置)', unlimited:'制限なし' };
 function updateModeUI(){
   document.getElementById('modeBadge').textContent = MODE_NAMES[settings.mode];
   document.getElementById('rotateBtn').style.display = settings.mode === 'fixed6' ? 'flex' : 'none';
   document.getElementById('gridToggleBtn').classList.toggle('active', settings.showGrid);
+  updateModeSegUI();
+}
+
+// モード選択UI(システム3択+固定/自由サブトグル)の見た目を、現在のsettings.modeに合わせて更新
+function updateModeSegUI(){
+  const sys = systemOfMode(settings.mode);
+  document.querySelectorAll('#systemSeg button').forEach(b=> b.classList.toggle('active', b.dataset.v===sys));
+  const submodeWrap = document.getElementById('submodeSeg');
+  submodeWrap.style.display = sys === 'unlimited' ? 'none' : 'flex';
+  const currentSub = settings.mode.indexOf('fixed') === 0 ? 'fixed' : 'free';
+  document.querySelectorAll('#submodeSeg button').forEach(b=> b.classList.toggle('active', b.dataset.v===currentSub));
+}
+
+// モードを切り替える(6人制/9人制それぞれの配置・サブモードは保持したまま切り替わる)
+function switchMode(newMode){
+  if(newMode === settings.mode) return;
+  settings.mode = newMode;
+  const sys = systemOfMode(newMode);
+  if(sys === 'six') settings.submode6 = newMode === 'free6' ? 'free' : 'fixed';
+  if(sys === 'nine') settings.submode9 = newMode === 'free9' ? 'free' : 'fixed';
+  ensureLayoutByMode();
+  layout = layoutByMode[newMode];
+  saveSettings();
+  saveLayout();
+  updateModeUI();
+  updateLabelButton();
+  renderBench();
+  requestRender();
 }
 
 /* ========================= 設定モーダル: タブ切替 ========================= */
@@ -1649,20 +1849,20 @@ document.getElementById('customBgInput').addEventListener('change', async (e)=>{
   toast('背景画像を設定しました');
 });
 
-document.querySelectorAll('#modeSeg button').forEach(btn=>{
-  if(btn.dataset.v === settings.mode) btn.classList.add('active');
+document.querySelectorAll('#systemSeg button').forEach(btn=>{
   btn.addEventListener('click', ()=>{
-    if(btn.dataset.v === settings.mode) return;
-    if(placedMemberIds().length > 0 && !confirm('モードを変更するとコート上の配置はリセットされます。よろしいですか？')) return;
-    document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.remove('active'));
-    btn.classList.add('active');
-    settings.mode = btn.dataset.v;
-    layout.slots = {FL:null,FC:null,FR:null,BR:null,BC:null,BL:null};
-    layout.placements = {};
-    saveSettings(); saveLayout();
-    updateModeUI();
-    renderBench();
-    requestRender();
+    const sys = btn.dataset.v;
+    const newMode = sys === 'six' ? modeFor('six', settings.submode6)
+                  : sys === 'nine' ? modeFor('nine', settings.submode9)
+                  : 'unlimited';
+    switchMode(newMode);
+  });
+});
+document.querySelectorAll('#submodeSeg button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const sys = systemOfMode(settings.mode);
+    if(sys === 'unlimited') return;
+    switchMode(modeFor(sys, btn.dataset.v));
   });
 });
 
@@ -1693,9 +1893,15 @@ document.querySelectorAll('#newMemberTypeSeg button').forEach(btn=>{
     document.getElementById('newMemberImageWrap').style.display = isImg ? 'block':'none';
   });
 });
-document.querySelectorAll('#newMemberPositionSeg button').forEach(btn=>{
+document.querySelectorAll('#newMemberPosition6Seg button').forEach(btn=>{
   btn.addEventListener('click', ()=>{
-    document.querySelectorAll('#newMemberPositionSeg button').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('#newMemberPosition6Seg button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+  });
+});
+document.querySelectorAll('#newMemberPosition9Seg button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('#newMemberPosition9Seg button').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
   });
 });
@@ -1745,7 +1951,8 @@ function resetMemberForm(){
   document.getElementById('newMemberImage').value = '';
   document.getElementById('newMemberImagePreviewWrap').style.display = 'none';
   setMemberFormType('number');
-  document.querySelectorAll('#newMemberPositionSeg button').forEach((b,i)=>b.classList.toggle('active', i===0));
+  document.querySelectorAll('#newMemberPosition6Seg button').forEach((b,i)=>b.classList.toggle('active', i===0));
+  document.querySelectorAll('#newMemberPosition9Seg button').forEach((b,i)=>b.classList.toggle('active', i===0));
   document.getElementById('newMemberCustomColor').checked = false;
   document.getElementById('newMemberColorWrap').style.display = 'none';
   newMemberColor = SWATCH_COLORS[0];
@@ -1774,7 +1981,8 @@ function startEditMember(id){
   } else {
     previewWrap.style.display = 'none';
   }
-  document.querySelectorAll('#newMemberPositionSeg button').forEach(b=>b.classList.toggle('active', b.dataset.v === (m.position||'')));
+  document.querySelectorAll('#newMemberPosition6Seg button').forEach(b=>b.classList.toggle('active', b.dataset.v === (m.position6||'')));
+  document.querySelectorAll('#newMemberPosition9Seg button').forEach(b=>b.classList.toggle('active', b.dataset.v === (m.position9||'')));
   document.getElementById('newMemberCustomColor').checked = !!m.customColor;
   document.getElementById('newMemberColorWrap').style.display = m.customColor ? 'block':'none';
   newMemberColor = m.color || SWATCH_COLORS[0];
@@ -1796,7 +2004,8 @@ document.getElementById('addMemberBtn').addEventListener('click', ()=>{
   const name = document.getElementById('newMemberName').value.trim();
   const type = document.querySelector('#newMemberTypeSeg button.active').dataset.v;
   const value = document.getElementById('newMemberValue').value.trim();
-  const position = document.querySelector('#newMemberPositionSeg button.active').dataset.v;
+  const position6 = document.querySelector('#newMemberPosition6Seg button.active').dataset.v;
+  const position9 = document.querySelector('#newMemberPosition9Seg button.active').dataset.v;
   const customColor = document.getElementById('newMemberCustomColor').checked;
   const resolvedImageData = type === 'image' ? (newMemberImageData || (editingMemberId ? editingOriginalImageData : null)) : null;
 
@@ -1811,7 +2020,8 @@ document.getElementById('addMemberBtn').addEventListener('click', ()=>{
     m.type = type;
     m.value = type==='image' ? '' : value;
     m.imageData = resolvedImageData;
-    m.position = position;
+    m.position6 = position6;
+    m.position9 = position9;
     m.customColor = customColor;
     m.color = customColor ? newMemberColor : null;
     delete m._img; // 画像が変わっている可能性があるのでキャッシュを破棄し再読込させる
@@ -1829,7 +2039,7 @@ document.getElementById('addMemberBtn').addEventListener('click', ()=>{
     id: uid(), name, type,
     value: type==='image' ? '' : value,
     imageData: resolvedImageData,
-    position, customColor,
+    position6, position9, customColor,
     color: customColor ? newMemberColor : null
   };
   roster.push(member);
@@ -1851,18 +2061,21 @@ function renderMemberList(){
   roster.forEach(m=>{
     const row = document.createElement('div');
     row.className = 'member-row';
+    const p6 = m.position6 && POSITION_META_6[m.position6] ? ('6人制:'+POSITION_META_6[m.position6].label+'('+m.position6+')') : '';
+    const p9 = m.position9 && POSITION_META_9[m.position9] ? ('9人制:'+POSITION_META_9[m.position9].label+'('+m.position9+')') : '';
+    const posParts = [p6, p9].filter(Boolean);
     row.innerHTML = tokenFaceHTML(m) +
       '<div class="m-info"><div class="m-name">'+escapeHTML(m.name)+'</div>' +
       '<div class="m-sub">'+(m.type==='number'?'番号':m.type==='text'?'文字':'画像')+
       (m.type!=='image' ? '：'+escapeHTML(m.value) : '') +
-      (m.position && POSITION_META[m.position] ? ' ・'+POSITION_META[m.position].label+'('+m.position+')' : '') + '</div></div>' +
+      (posParts.length ? ' ・'+posParts.join(' / ') : '') + '</div></div>' +
       '<div class="m-actions"><button class="smallbtn" data-act="edit">編集</button><button class="smallbtn danger" data-act="del">削除</button></div>';
     row.querySelector('[data-act=edit]').addEventListener('click', ()=> startEditMember(m.id));
     row.querySelector('[data-act=del]').addEventListener('click', ()=>{
       if(!confirm(m.name+' を名簿から削除しますか？')) return;
       if(editingMemberId === m.id) cancelEditMember();
       roster = roster.filter(x=>x.id!==m.id);
-      returnToBench(m.id); // コート上にいた場合の後始末(存在しなければ何もしない)
+      purgeMemberFromAllLayouts(m.id); // 全モードの配置から後始末(現在表示していないモードに配置されていた場合も含む)
       saveRoster();
       renderMemberList();
       renderBench();
@@ -1876,7 +2089,10 @@ function renderMemberList(){
 function sanitizeMember(raw){
   if(!raw || typeof raw !== 'object') return null;
   const type = ['number','text','image'].includes(raw.type) ? raw.type : 'number';
-  const position = (typeof raw.position === 'string' && POSITION_META[raw.position]) ? raw.position : '';
+  let position6 = (typeof raw.position6 === 'string' && POSITION_META_6[raw.position6]) ? raw.position6 : '';
+  const position9 = (typeof raw.position9 === 'string' && POSITION_META_9[raw.position9]) ? raw.position9 : '';
+  // 旧形式(6人制のみの単一positionフィールド)のJSONを読み込んだ場合は6人制用として扱う
+  if(!position6 && typeof raw.position === 'string' && POSITION_META_6[raw.position]) position6 = raw.position;
   const customColor = !!raw.customColor;
   const color = (customColor && typeof raw.color === 'string') ? raw.color : null;
   const name = typeof raw.name === 'string' ? raw.name.slice(0,60) : '';
@@ -1884,7 +2100,7 @@ function sanitizeMember(raw){
   const imageData = (type === 'image' && typeof raw.imageData === 'string' && raw.imageData.startsWith('data:image')) ? raw.imageData : null;
   if(type === 'image' && !imageData) return null; // 画像タイプなのに画像データが無いものは不正とみなしスキップ
   if(type !== 'image' && !value) return null; // 番号/文字タイプなのに値が無いものはスキップ
-  return { id: uid(), name, type, value: type==='image' ? '' : value, imageData, position, customColor, color };
+  return { id: uid(), name, type, value: type==='image' ? '' : value, imageData, position6, position9, customColor, color };
 }
 
 function exportRosterJSON(){
@@ -1895,7 +2111,7 @@ function exportRosterJSON(){
     exportedAt: new Date().toISOString(),
     roster: roster.map(m=>({
       name: m.name, type: m.type, value: m.value, imageData: m.imageData,
-      position: m.position || '', customColor: !!m.customColor, color: m.color || null
+      position6: m.position6 || '', position9: m.position9 || '', customColor: !!m.customColor, color: m.color || null
     }))
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
@@ -1953,8 +2169,10 @@ document.getElementById('importReplaceBtn').addEventListener('click', ()=>{
   if(!pendingImportMembers) return;
   if(!confirm('現在の名簿('+roster.length+'人)を削除して置き換えます。コート上の配置もリセットされます。よろしいですか？')){ return; }
   roster = pendingImportMembers;
-  layout.slots = {FL:null,FC:null,FR:null,BR:null,BC:null,BL:null};
-  layout.placements = {};
+  // 名簿を丸ごと入れ替えるため、全モード分のコート配置をリセットする(旧メンバーIDが残らないように)
+  layoutByMode = {};
+  ensureLayoutByMode();
+  layout = layoutByMode[settings.mode];
   saveRoster();
   saveLayout();
   ensureMemberImages();
@@ -2127,7 +2345,8 @@ function snapshotCurrentLayout(){
     mode: settings.mode,
     label: layout.label,
     slots: settings.mode === 'fixed6' ? Object.assign({}, layout.slots) : null,
-    placements: settings.mode !== 'fixed6' ? JSON.parse(JSON.stringify(layout.placements)) : null
+    slots9: settings.mode === 'fixed9' ? Object.assign({}, layout.slots9) : null,
+    placements: !isFixedMode(settings.mode) ? JSON.parse(JSON.stringify(layout.placements)) : null
   };
 }
 
@@ -2137,7 +2356,7 @@ document.getElementById('saveCurrentLayoutBtn').addEventListener('click', ()=>{
   const snap = snapshotCurrentLayout();
   savedLayouts.push({
     id: uid(), name,
-    mode: snap.mode, label: snap.label, slots: snap.slots, placements: snap.placements,
+    mode: snap.mode, label: snap.label, slots: snap.slots, slots9: snap.slots9, placements: snap.placements,
     savedAt: new Date().toISOString()
   });
   saveSavedLayouts();
@@ -2150,36 +2369,54 @@ function loadSavedLayout(id){
   const sl = savedLayouts.find(x=>x.id===id);
   if(!sl) return;
   if(sl.mode !== settings.mode){
-    if(!confirm('この配置は「'+MODE_NAMES[sl.mode]+'」で保存されています。モードを切り替えて呼び出しますか？(今のコートの配置は消えます)')) return;
+    if(!confirm('この配置は「'+MODE_NAMES[sl.mode]+'」で保存されています。モードを切り替えて呼び出しますか？(そのモードの現在の配置は上書きされます)')) return;
   } else {
     if(!confirm('「'+sl.name+'」を呼び出します。今のコートの配置は置き換えられます。よろしいですか？')) return;
   }
   settings.mode = sl.mode;
+  const sys = systemOfMode(sl.mode);
+  if(sys === 'six') settings.submode6 = sl.mode === 'free6' ? 'free' : 'fixed';
+  if(sys === 'nine') settings.submode9 = sl.mode === 'free9' ? 'free' : 'fixed';
+  ensureLayoutByMode();
+  layout = layoutByMode[sl.mode];
   layout.label = sl.label || '';
-  layout.slots = {FL:null,FC:null,FR:null,BR:null,BC:null,BL:null};
-  layout.placements = {};
 
   const ids = new Set(roster.map(m=>m.id));
   let skipped = 0;
-  if(sl.mode === 'fixed6' && sl.slots){
-    SLOT_ORDER.forEach(slotKey=>{
-      const mid = sl.slots[slotKey];
-      if(!mid) return;
-      if(ids.has(mid)) layout.slots[slotKey] = mid;
-      else skipped++;
-    });
-  } else if(sl.placements){
-    Object.keys(sl.placements).forEach(mid=>{
-      if(ids.has(mid)) layout.placements[mid] = sl.placements[mid];
-      else skipped++;
-    });
+  if(sl.mode === 'fixed6'){
+    layout.slots = emptySlots6();
+    if(sl.slots){
+      SLOT_ORDER.forEach(slotKey=>{
+        const mid = sl.slots[slotKey];
+        if(!mid) return;
+        if(ids.has(mid)) layout.slots[slotKey] = mid;
+        else skipped++;
+      });
+    }
+  } else if(sl.mode === 'fixed9'){
+    layout.slots9 = emptySlots9();
+    if(sl.slots9){
+      SLOT_ORDER_9.forEach(slotKey=>{
+        const mid = sl.slots9[slotKey];
+        if(!mid) return;
+        if(ids.has(mid)) layout.slots9[slotKey] = mid;
+        else skipped++;
+      });
+    }
+  } else {
+    layout.placements = {};
+    if(sl.placements){
+      Object.keys(sl.placements).forEach(mid=>{
+        if(ids.has(mid)) layout.placements[mid] = sl.placements[mid];
+        else skipped++;
+      });
+    }
   }
 
   saveSettings();
   saveLayout();
   updateModeUI();
   updateLabelButton();
-  document.querySelectorAll('#modeSeg button').forEach(b=> b.classList.toggle('active', b.dataset.v===settings.mode));
   renderBench();
   requestRender();
   document.getElementById('savedLayoutsOverlay').classList.remove('open');
@@ -2204,7 +2441,7 @@ function overwriteSavedLayout(id){
   if(!sl) return;
   if(!confirm('「'+sl.name+'」を、今コートにある配置で上書き保存します。よろしいですか？')) return;
   const snap = snapshotCurrentLayout();
-  sl.mode = snap.mode; sl.label = snap.label; sl.slots = snap.slots; sl.placements = snap.placements;
+  sl.mode = snap.mode; sl.label = snap.label; sl.slots = snap.slots; sl.slots9 = snap.slots9; sl.placements = snap.placements;
   sl.savedAt = new Date().toISOString();
   saveSavedLayouts();
   renderSavedLayoutsList();
@@ -2240,7 +2477,6 @@ async function init(){
   document.getElementById('versionLabel').textContent = APP_VERSION;
   document.getElementById('gridDefaultToggle').checked = settings.showGrid;
   document.querySelectorAll('#shapeSeg button').forEach(b=> b.classList.toggle('active', b.dataset.v===settings.shape));
-  document.querySelectorAll('#modeSeg button').forEach(b=> b.classList.toggle('active', b.dataset.v===settings.mode));
   document.querySelectorAll('#gridDivisionSeg button').forEach(b=> b.classList.toggle('active', b.dataset.v===settings.gridDivision));
 
   updateLabelButton();
