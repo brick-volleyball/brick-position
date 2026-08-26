@@ -250,6 +250,65 @@
     padding:6px 0 2px;
   }
 
+  /* ===== アクセス制限ゲート(BRICKサポーター確認) ===== */
+  .auth-gate{
+    position:fixed;inset:0;
+    background:var(--bg);
+    z-index:1000;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+    overflow-y:auto;
+  }
+  .auth-gate.hidden{display:none;}
+  .gate-card{
+    width:100%;max-width:400px;
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:36px 28px;
+    text-align:center;
+  }
+  .gate-logo{
+    font-size:22px;font-weight:900;letter-spacing:-.02em;
+    margin-bottom:4px;
+  }
+  .gate-logo .l-b{color:#4285F4;}
+  .gate-logo .l-r{color:#EA4335;}
+  .gate-logo .l-i{color:#FBBC05;}
+  .gate-logo .l-c{color:#4285F4;}
+  .gate-logo .l-k{color:#34A853;}
+  .gate-eyebrow{
+    font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--turquoise);margin-bottom:20px;
+  }
+  .gate-title{font-size:17px;margin:0 0 10px;font-weight:700;}
+  .gate-sub{font-size:12.5px;line-height:1.7;color:var(--sub);margin-bottom:22px;}
+  .gate-google-btn{display:none;justify-content:center;margin-bottom:14px;min-height:40px;}
+  .gate-loader{display:flex;justify-content:center;gap:8px;margin:8px 0;}
+  .gate-loader span{
+    width:8px;height:8px;border-radius:50%;background:var(--turquoise);
+    animation:gateToss 1.2s ease-in-out infinite;
+  }
+  .gate-loader span:nth-child(2){animation-delay:.15s;}
+  .gate-loader span:nth-child(3){animation-delay:.3s;}
+  @keyframes gateToss{
+    0%,100%{transform:translateY(0);opacity:.5;}
+    50%{transform:translateY(-8px);opacity:1;}
+  }
+  .gate-status{min-height:18px;font-size:12px;color:var(--sub);margin:4px 0 0;}
+  .gate-status.error{color:var(--danger);}
+  .gate-result{display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);}
+  .gate-result p{font-size:12.5px;line-height:1.7;color:var(--sub);margin-bottom:14px;}
+  .gate-pay-btn{width:100%;text-decoration:none;box-sizing:border-box;}
+  .gate-relogin{
+    display:block;width:100%;margin-top:10px;background:none;border:none;
+    color:var(--sub);text-decoration:underline;font-size:11.5px;cursor:pointer;font-family:inherit;
+  }
+  .gate-footer{margin-top:22px;font-size:10.5px;color:#5c6884;line-height:1.6;}
+  .gate-footer a{color:var(--sub);}
+
   /* modal */
   .modal-overlay{
     position:fixed;inset:0;
@@ -379,6 +438,17 @@
     border-radius:10px;
     padding:8px 10px;
   }
+  .saved-layout-row{
+    background:var(--panel2);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:10px;
+    margin-bottom:8px;
+  }
+  .saved-layout-row .sl-name{font-size:13px;font-weight:700;margin-bottom:2px;}
+  .saved-layout-row .sl-sub{font-size:11px;color:var(--sub);margin-bottom:9px;}
+  .saved-layout-row .sl-actions{display:flex;gap:6px;flex-wrap:wrap;}
+  .saved-layout-row .sl-actions .smallbtn{flex:1;min-width:64px;text-align:center;}
   .member-row .token-face{
     width:36px;height:36px;
     border-radius:50%;
@@ -525,10 +595,41 @@
 </style>
 </head>
 <body>
+
+<!-- BRICKサポーター限定アクセスゲート -->
+<div class="auth-gate" id="authGate">
+  <div class="gate-card">
+    <div class="gate-logo">
+      <span class="l-b">B</span><span class="l-r">R</span><span class="l-i">I</span><span class="l-c">C</span><span class="l-k">K</span>
+    </div>
+    <div class="gate-eyebrow">SUPPORTERS</div>
+    <h2 class="gate-title">BRICKサポーター確認</h2>
+    <p class="gate-sub">このツールはBRICKサポーター(月額登録)の方のみご利用いただけます。Googleアカウントでログインし、登録状況を確認してください。</p>
+
+    <div id="googleSigninBtn" class="gate-google-btn"></div>
+
+    <div class="gate-loader" id="gateLoader">
+      <span></span><span></span><span></span>
+    </div>
+    <p class="gate-status" id="gateStatus">確認しています…</p>
+
+    <div class="gate-result" id="gateInactive">
+      <p>現在、サポーター登録が確認できませんでした。BRICKサポーターになると、このツールをご利用いただけます。</p>
+      <a href="https://buy.stripe.com/5kQ14f75z1tG1Ungkt4ZG01" class="btn btn-primary gate-pay-btn" target="_blank" rel="noopener">サポーターになる</a>
+      <button class="gate-relogin" id="gateReloginBtn">別のGoogleアカウントでログインし直す</button>
+    </div>
+
+    <p class="gate-footer">お困りの場合は <a href="mailto:brick.volley@gmail.com">brick.volley@gmail.com</a> までご連絡ください。</p>
+  </div>
+</div>
+
 <div class="app">
   <header class="topbar">
     <h1><span class="dot"></span>BRICK ポジション配置</h1>
-    <button class="iconbtn" id="openSettingsBtn" title="設定">⚙️</button>
+    <div style="display:flex;gap:8px;">
+      <button class="iconbtn" id="openSavedLayoutsBtn" title="保存した配置">📂</button>
+      <button class="iconbtn" id="openSettingsBtn" title="設定">⚙️</button>
+    </div>
   </header>
 
   <main>
@@ -553,7 +654,7 @@
   <div class="bottombar">
     <div class="bottombar-inner">
       <button class="btn btn-secondary" id="clearCourtBtn">🔄 コートをリセット</button>
-      <button class="btn btn-primary" id="savePngBtn">🖼 PNG保存</button>
+      <button class="btn btn-primary" id="savePngBtn">🖼 PNG出力</button>
     </div>
     <div class="version" id="versionLabel"></div>
   </div>
@@ -605,6 +706,7 @@
       <button class="tab" data-tab="display">表示</button>
       <button class="tab" data-tab="court">コート/モード</button>
       <button class="tab" data-tab="save">保存先</button>
+      <button class="tab" data-tab="account">アカウント</button>
     </div>
     <div class="modal-body">
 
@@ -718,6 +820,33 @@
         <div class="hint">対応環境(Android Chrome / PC Chrome等)では、一度選択したフォルダを次回以降も記憶します。iPhone Safari等、File System Access APIに非対応の環境では、常にダウンロードフォルダへの保存になります。</div>
       </div>
 
+      <div class="tabpane" id="tab-account" style="display:none;">
+        <div class="folder-status" id="accountEmailBox">読み込み中…</div>
+        <button class="btn btn-secondary" id="accountLogoutBtn" style="width:100%;">ログアウト</button>
+        <div class="hint">ログアウトすると、このツールはすぐに利用できなくなります。次回開いたとき、Googleログイン→サポーター登録確認から再度行ってください。</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- 保存した配置(呼び出し・編集・削除) -->
+<div class="modal-overlay" id="savedLayoutsOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>保存した配置</h2>
+      <button class="iconbtn" id="closeSavedLayoutsBtn">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="addform">
+        <div class="field">
+          <label>名前を付けて、今コートにある配置を保存</label>
+          <input type="text" id="saveLayoutNameInput" placeholder="例: ○○戦オーダー / ローテーション1">
+        </div>
+        <button class="btn btn-primary" id="saveCurrentLayoutBtn" style="width:100%;">💾 現在の配置を保存</button>
+        <div class="hint" style="margin-top:8px;">配置モード(6人制固定/自由配置/9人制/制限なし)も一緒に記録されます。呼び出す際、今のモードと違う場合はモードごと切り替わります。</div>
+      </div>
+      <div id="savedLayoutsList" style="margin-top:14px;"></div>
     </div>
   </div>
 </div>
@@ -729,7 +858,7 @@
 "use strict";
 
 /* ========================= 定数 ========================= */
-const APP_VERSION = "v2026-08-26 12:59";
+const APP_VERSION = "v2026-08-26 15:20";
 const LS_KEY_ROSTER = "brickpos_roster_v1";
 const LS_KEY_SETTINGS = "brickpos_settings_v1";
 const LS_KEY_LAYOUT = "brickpos_layout_v1";
@@ -946,10 +1075,11 @@ function drawGuideGrid(ctx){
 
 function slotCoord(slot){
   const colX = { L: courtLeft+courtWidth/6, C: courtLeft+courtWidth/2, R: courtRight-courtWidth/6 };
-  // 6人制(固定配置)の既定位置は、実際のアタックラインとは無関係に、
-  // コートを均等に上下2分割・左右3分割した位置(6分割グリッドと同じ考え方)に置く。
-  const frontY = courtTop + courtDepth/4;
-  const backY = courtTop + courtDepth*3/4;
+  // 前衛/後衛の既定Y座標は、実際のアタックラインではなく、6分割グリッドと同じ「コートを均等に上下2分割した位置」
+  // (上から1/4・3/4の高さ)を基準にする。アタックライン基準のままだと、6分割ガイド線(均等分割)との間で
+  // 前衛と後衛の間隔が不自然に空いて見えるため。
+  const frontY = courtTop + courtDepth * 0.25;
+  const backY = courtTop + courtDepth * 0.75;
   const map = {
     FL:{x:colX.L,y:frontY}, FC:{x:colX.C,y:frontY}, FR:{x:colX.R,y:frontY},
     BR:{x:colX.R,y:backY}, BC:{x:colX.C,y:backY}, BL:{x:colX.L,y:backY}
@@ -1073,10 +1203,18 @@ function requestRender(){
 
 function setupCanvasSize(){
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  canvas.width = COURT_W * dpr;
-  canvas.height = COURT_H * dpr;
+  const newW = COURT_W * dpr, newH = COURT_H * dpr;
+  // canvas.width/height への代入はキャンバスの内容を消去してしまうため、
+  // 実際にサイズが変わる場合のみ行う(モーダル開閉やスマホの仮想キーボード表示で
+  // 発生する resize イベントのたびに描画内容が消えていた不具合の原因)
+  if(canvas.width !== newW || canvas.height !== newH){
+    canvas.width = newW;
+    canvas.height = newH;
+  }
   canvas.style.aspectRatio = (COURT_W/COURT_H).toString();
   ctx.setTransform(dpr,0,0,dpr,0,0);
+  requestRender(); // resize後は必ず再描画する(サイズが変わらず上のif分岐に入らない場合でも、
+                    // setTransformのやり直しに合わせて安全のため常に再描画)
 }
 
 function render(){
@@ -1939,9 +2077,162 @@ document.getElementById('savePngBtn').addEventListener('click', async ()=>{
   }, 'image/png');
 });
 
+/* ========================= 保存した配置(呼び出し・編集・削除) ========================= */
+const LS_KEY_SAVED_LAYOUTS = "brickpos_savedLayouts_v1";
+let savedLayouts = [];
+
+function loadSavedLayouts(){
+  try{ const s = localStorage.getItem(LS_KEY_SAVED_LAYOUTS); if(s) savedLayouts = JSON.parse(s); }catch(e){ savedLayouts = []; }
+}
+function saveSavedLayouts(){ localStorage.setItem(LS_KEY_SAVED_LAYOUTS, JSON.stringify(savedLayouts)); }
+
+function formatSavedAt(iso){
+  try{
+    const d = new Date(iso);
+    const pad = n=>String(n).padStart(2,'0');
+    return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes());
+  }catch(e){ return ''; }
+}
+
+function renderSavedLayoutsList(){
+  const wrap = document.getElementById('savedLayoutsList');
+  wrap.innerHTML = '';
+  if(savedLayouts.length === 0){
+    wrap.innerHTML = '<div class="hint">まだ保存された配置はありません。上のフォームから保存してください。</div>';
+    return;
+  }
+  // 新しいものを上に
+  savedLayouts.slice().reverse().forEach(sl=>{
+    const row = document.createElement('div');
+    row.className = 'saved-layout-row';
+    row.innerHTML =
+      '<div class="sl-name">'+escapeHTML(sl.name)+'</div>' +
+      '<div class="sl-sub">'+MODE_NAMES[sl.mode]+' ・ '+formatSavedAt(sl.savedAt)+' 保存</div>' +
+      '<div class="sl-actions">' +
+        '<button class="smallbtn" data-act="load">呼び出す</button>' +
+        '<button class="smallbtn" data-act="rename">名前変更</button>' +
+        '<button class="smallbtn" data-act="overwrite">上書き保存</button>' +
+        '<button class="smallbtn danger" data-act="del">削除</button>' +
+      '</div>';
+    row.querySelector('[data-act=load]').addEventListener('click', ()=> loadSavedLayout(sl.id));
+    row.querySelector('[data-act=rename]').addEventListener('click', ()=> renameSavedLayout(sl.id));
+    row.querySelector('[data-act=overwrite]').addEventListener('click', ()=> overwriteSavedLayout(sl.id));
+    row.querySelector('[data-act=del]').addEventListener('click', ()=> deleteSavedLayout(sl.id));
+    wrap.appendChild(row);
+  });
+}
+
+function snapshotCurrentLayout(){
+  return {
+    mode: settings.mode,
+    label: layout.label,
+    slots: settings.mode === 'fixed6' ? Object.assign({}, layout.slots) : null,
+    placements: settings.mode !== 'fixed6' ? JSON.parse(JSON.stringify(layout.placements)) : null
+  };
+}
+
+document.getElementById('saveCurrentLayoutBtn').addEventListener('click', ()=>{
+  const nameInput = document.getElementById('saveLayoutNameInput');
+  const name = nameInput.value.trim() || layout.label || ('配置 ' + formatSavedAt(new Date().toISOString()));
+  const snap = snapshotCurrentLayout();
+  savedLayouts.push({
+    id: uid(), name,
+    mode: snap.mode, label: snap.label, slots: snap.slots, placements: snap.placements,
+    savedAt: new Date().toISOString()
+  });
+  saveSavedLayouts();
+  nameInput.value = '';
+  renderSavedLayoutsList();
+  toast('配置を保存しました');
+});
+
+function loadSavedLayout(id){
+  const sl = savedLayouts.find(x=>x.id===id);
+  if(!sl) return;
+  if(sl.mode !== settings.mode){
+    if(!confirm('この配置は「'+MODE_NAMES[sl.mode]+'」で保存されています。モードを切り替えて呼び出しますか？(今のコートの配置は消えます)')) return;
+  } else {
+    if(!confirm('「'+sl.name+'」を呼び出します。今のコートの配置は置き換えられます。よろしいですか？')) return;
+  }
+  settings.mode = sl.mode;
+  layout.label = sl.label || '';
+  layout.slots = {FL:null,FC:null,FR:null,BR:null,BC:null,BL:null};
+  layout.placements = {};
+
+  const ids = new Set(roster.map(m=>m.id));
+  let skipped = 0;
+  if(sl.mode === 'fixed6' && sl.slots){
+    SLOT_ORDER.forEach(slotKey=>{
+      const mid = sl.slots[slotKey];
+      if(!mid) return;
+      if(ids.has(mid)) layout.slots[slotKey] = mid;
+      else skipped++;
+    });
+  } else if(sl.placements){
+    Object.keys(sl.placements).forEach(mid=>{
+      if(ids.has(mid)) layout.placements[mid] = sl.placements[mid];
+      else skipped++;
+    });
+  }
+
+  saveSettings();
+  saveLayout();
+  updateModeUI();
+  updateLabelButton();
+  document.querySelectorAll('#modeSeg button').forEach(b=> b.classList.toggle('active', b.dataset.v===settings.mode));
+  renderBench();
+  requestRender();
+  document.getElementById('savedLayoutsOverlay').classList.remove('open');
+  toast('「'+sl.name+'」を呼び出しました' + (skipped>0 ? '('+skipped+'人は名簿に見つからずスキップされました)' : ''));
+}
+
+function renameSavedLayout(id){
+  const sl = savedLayouts.find(x=>x.id===id);
+  if(!sl) return;
+  const newName = prompt('新しい名前を入力してください', sl.name);
+  if(newName === null) return; // キャンセル
+  const trimmed = newName.trim();
+  if(!trimmed){ toast('名前が空です'); return; }
+  sl.name = trimmed;
+  saveSavedLayouts();
+  renderSavedLayoutsList();
+  toast('名前を変更しました');
+}
+
+function overwriteSavedLayout(id){
+  const sl = savedLayouts.find(x=>x.id===id);
+  if(!sl) return;
+  if(!confirm('「'+sl.name+'」を、今コートにある配置で上書き保存します。よろしいですか？')) return;
+  const snap = snapshotCurrentLayout();
+  sl.mode = snap.mode; sl.label = snap.label; sl.slots = snap.slots; sl.placements = snap.placements;
+  sl.savedAt = new Date().toISOString();
+  saveSavedLayouts();
+  renderSavedLayoutsList();
+  toast('上書き保存しました');
+}
+
+function deleteSavedLayout(id){
+  const sl = savedLayouts.find(x=>x.id===id);
+  if(!sl) return;
+  if(!confirm('「'+sl.name+'」を削除しますか？この操作は取り消せません。')) return;
+  savedLayouts = savedLayouts.filter(x=>x.id!==id);
+  saveSavedLayouts();
+  renderSavedLayoutsList();
+  toast('削除しました');
+}
+
+document.getElementById('openSavedLayoutsBtn').addEventListener('click', ()=>{
+  renderSavedLayoutsList();
+  document.getElementById('savedLayoutsOverlay').classList.add('open');
+});
+document.getElementById('closeSavedLayoutsBtn').addEventListener('click', ()=>{
+  document.getElementById('savedLayoutsOverlay').classList.remove('open');
+});
+
 /* ========================= 初期化 ========================= */
 async function init(){
   loadAll();
+  loadSavedLayouts();
   ensureMemberImages();
   setupCanvasSize();
   window.addEventListener('resize', setupCanvasSize);
@@ -1964,6 +2255,149 @@ async function init(){
 init();
 
 })();
+</script>
+
+<!-- ===== BRICKサポーター限定アクセスゲート(Firebase Authentication + Firestore) =====
+     既存の tools/index.html・tools/list.html と同じFirebaseプロジェクト・
+     判定ロジック(subscriptions/{email}のstatus==='active'かつ期限内)を、
+     このツール単体でも独立して確認する。tools/一覧を経由しなくても、
+     このURLに直接アクセスした場合も同様にゲートがかかる。 -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+  import { getAuth, GoogleAuthProvider, signInWithCredential, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+  import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+  // ---- Firebase設定(tools/index.html・list.htmlと同一) ----
+  const firebaseConfig = {
+    apiKey: "AIzaSyCn0rLPeyN_hw3_lLaYw1UMAzsSK3DpxuM",
+    authDomain: "team-video-uploader-503720.firebaseapp.com",
+    projectId: "team-video-uploader-503720",
+    storageBucket: "team-video-uploader-503720.firebasestorage.app",
+    messagingSenderId: "551674365524",
+    appId: "1:551674365524:web:f67d5524bc0b3ccec70fc1",
+    measurementId: "G-S97JSJJC1N"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  const gateEl = document.getElementById('authGate');
+  const googleBtnWrap = document.getElementById('googleSigninBtn');
+  const gateLoader = document.getElementById('gateLoader');
+  const gateStatus = document.getElementById('gateStatus');
+  const gateInactive = document.getElementById('gateInactive');
+  const gateReloginBtn = document.getElementById('gateReloginBtn');
+  const accountEmailBox = document.getElementById('accountEmailBox');
+  const accountLogoutBtn = document.getElementById('accountLogoutBtn');
+
+  function showLoading(msg){
+    gateStatus.textContent = msg || '確認しています…';
+    gateStatus.classList.remove('error');
+    gateLoader.style.display = 'flex';
+    googleBtnWrap.style.display = 'none';
+    gateInactive.style.display = 'none';
+  }
+  function showError(msg){
+    gateStatus.textContent = msg;
+    gateStatus.classList.add('error');
+    gateLoader.style.display = 'none';
+    googleBtnWrap.style.display = 'flex';
+    gateInactive.style.display = 'none';
+  }
+  function showLoginPrompt(){
+    gateStatus.textContent = '';
+    gateStatus.classList.remove('error');
+    gateLoader.style.display = 'none';
+    googleBtnWrap.style.display = 'flex';
+    gateInactive.style.display = 'none';
+  }
+  function showInactive(){
+    gateStatus.textContent = '';
+    gateStatus.classList.remove('error');
+    gateLoader.style.display = 'none';
+    googleBtnWrap.style.display = 'none';
+    gateInactive.style.display = 'block';
+  }
+  function unlockApp(email){
+    gateEl.classList.add('hidden');
+    if(accountEmailBox) accountEmailBox.textContent = 'ログイン中: ' + email;
+  }
+
+  // ---- Firestoreでサポーター登録状況を確認 ----
+  async function checkSubscriptionAndProceed(email){
+    try{
+      const subRef = doc(db, 'subscriptions', email);
+      const subSnap = await getDoc(subRef);
+
+      if (subSnap.exists()){
+        const data = subSnap.data();
+        const isActive = data.status === 'active';
+        const notExpired = !data.currentPeriodEnd || (new Date(data.currentPeriodEnd.toDate ? data.currentPeriodEnd.toDate() : data.currentPeriodEnd) > new Date());
+        if (isActive && notExpired){
+          unlockApp(email);
+          return;
+        }
+      }
+      showInactive();
+    }catch(err){
+      console.error('[BRICK DEBUG] サポーター確認エラー:', err);
+      showError('確認中にエラーが発生しました。時間をおいて再度お試しください。');
+    }
+  }
+
+  // ---- Googleログイン成功時のコールバック ----
+  window.handleGoogleSignIn = async function(response){
+    try{
+      showLoading('ログインしています…');
+      const credential = GoogleAuthProvider.credential(response.credential);
+      const userCred = await signInWithCredential(auth, credential);
+      const email = userCred.user.email;
+      showLoading('サポーター登録状況を確認しています…');
+      await checkSubscriptionAndProceed(email);
+    }catch(err){
+      console.error('[BRICK DEBUG] ログインエラー:', err);
+      showError('ログインでエラーが発生しました。時間をおいて再度お試しください。');
+    }
+  };
+
+  // ---- 再訪問時、既にログイン済みなら自動で確認(Firebase Authは既定でログイン状態を保持) ----
+  onAuthStateChanged(auth, async (user) => {
+    if (!user || !user.email){
+      showLoginPrompt();
+      return;
+    }
+    showLoading('サポーター登録状況を確認しています…');
+    await checkSubscriptionAndProceed(user.email);
+  });
+
+  gateReloginBtn.addEventListener('click', async () => {
+    try{ await signOut(auth); }catch(e){}
+    showLoginPrompt();
+  });
+
+  if (accountLogoutBtn){
+    accountLogoutBtn.addEventListener('click', async () => {
+      try{ await signOut(auth); }catch(e){}
+      window.location.reload();
+    });
+  }
+</script>
+
+<!-- Google Identity Services -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script>
+  window.addEventListener('load', function(){
+    if (typeof google === 'undefined' || !google.accounts) return;
+    google.accounts.id.initialize({
+      client_id: "551674365524-1qjh7ij42vd933gdns994gqckuglcmqb.apps.googleusercontent.com",
+      callback: handleGoogleSignIn
+    });
+    google.accounts.id.renderButton(
+      document.getElementById('googleSigninBtn'),
+      { theme: 'filled_black', size: 'large', shape: 'pill', text: 'signin_with', width: 260 }
+    );
+  });
 </script>
 </body>
 </html>
