@@ -403,6 +403,9 @@
     border-radius:7px;
     cursor:pointer;
   }
+  .backup-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;}
+  .backup-row .smallbtn{flex:1;min-width:150px;text-align:center;padding:9px;font-size:12px;}
+  .filebtn-inline{display:flex;align-items:center;justify-content:center;}
   .smallbtn.danger{color:var(--danger);border-color:var(--danger);}
   .addform{
     background:var(--panel2);
@@ -548,6 +551,19 @@
   </div>
 </div>
 
+<!-- 名簿インポートの取り込み方法選択 -->
+<div class="label-editor-overlay" id="importChoiceOverlay">
+  <div class="label-editor-box">
+    <h3>名簿の読み込み方法を選んでください</h3>
+    <div class="hint" id="importSummaryText" style="margin-bottom:12px;"></div>
+    <div class="row" style="flex-direction:column;gap:8px;">
+      <button class="btn btn-primary" id="importAppendBtn">現在の名簿に追加する</button>
+      <button class="btn btn-secondary" id="importReplaceBtn" style="color:var(--danger);border-color:var(--danger);">現在の名簿を置き換える(コート配置もリセット)</button>
+      <button class="btn btn-secondary" id="importCancelBtn">キャンセル</button>
+    </div>
+  </div>
+</div>
+
 <!-- ラベル編集 -->
 <div class="label-editor-overlay" id="labelEditorOverlay">
   <div class="label-editor-box">
@@ -585,6 +601,11 @@
     <div class="modal-body">
 
       <div class="tabpane" id="tab-members">
+        <div class="backup-row">
+          <button class="smallbtn" id="exportRosterBtn">📤 名簿を書き出す(JSON)</button>
+          <label class="smallbtn filebtn-inline">📥 名簿を読み込む(JSON)<input type="file" accept="application/json,.json" id="importRosterInput" style="display:none;"></label>
+        </div>
+        <div class="hint" style="margin-bottom:12px;">書き出したJSONファイルは、他の端末やブラウザに名簿を移す・バックアップを取る用途に使えます。</div>
         <div class="memberlist" id="memberList"></div>
         <div class="addform">
           <div class="field">
@@ -692,7 +713,7 @@
 "use strict";
 
 /* ========================= 定数 ========================= */
-const APP_VERSION = "v2026-08-26 10:54";
+const APP_VERSION = "v2026-08-26 11:20";
 const LS_KEY_ROSTER = "brickpos_roster_v1";
 const LS_KEY_SETTINGS = "brickpos_settings_v1";
 const LS_KEY_LAYOUT = "brickpos_layout_v1";
@@ -1610,6 +1631,99 @@ function renderMemberList(){
     wrap.appendChild(row);
   });
 }
+
+/* ========================= 名簿の書き出し / 読み込み(JSON) ========================= */
+function sanitizeMember(raw){
+  if(!raw || typeof raw !== 'object') return null;
+  const type = ['number','text','image'].includes(raw.type) ? raw.type : 'number';
+  const position = (typeof raw.position === 'string' && POSITION_META[raw.position]) ? raw.position : '';
+  const customColor = !!raw.customColor;
+  const color = (customColor && typeof raw.color === 'string') ? raw.color : null;
+  const name = typeof raw.name === 'string' ? raw.name.slice(0,60) : '';
+  const value = typeof raw.value === 'string' ? raw.value.slice(0,4) : '';
+  const imageData = (type === 'image' && typeof raw.imageData === 'string' && raw.imageData.startsWith('data:image')) ? raw.imageData : null;
+  if(type === 'image' && !imageData) return null; // 画像タイプなのに画像データが無いものは不正とみなしスキップ
+  if(type !== 'image' && !value) return null; // 番号/文字タイプなのに値が無いものはスキップ
+  return { id: uid(), name, type, value: type==='image' ? '' : value, imageData, position, customColor, color };
+}
+
+function exportRosterJSON(){
+  if(roster.length === 0){ toast('名簿にメンバーがいません'); return; }
+  const payload = {
+    app: 'brick-position-tool',
+    type: 'roster-export',
+    exportedAt: new Date().toISOString(),
+    roster: roster.map(m=>({
+      name: m.name, type: m.type, value: m.value, imageData: m.imageData,
+      position: m.position || '', customColor: !!m.customColor, color: m.color || null
+    }))
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const now = new Date();
+  const pad = n=>String(n).padStart(2,'0');
+  const ts = now.getFullYear()+pad(now.getMonth()+1)+pad(now.getDate())+'_'+pad(now.getHours())+pad(now.getMinutes());
+  const a = document.createElement('a');
+  a.href = url; a.download = 'BRICK名簿_'+ts+'.json';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url), 4000);
+  toast('名簿を書き出しました('+roster.length+'人)');
+}
+document.getElementById('exportRosterBtn').addEventListener('click', exportRosterJSON);
+
+let pendingImportMembers = null;
+document.getElementById('importRosterInput').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  e.target.value = ''; // 同じファイルを続けて選び直せるようにする
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev)=>{
+    let json;
+    try{ json = JSON.parse(ev.target.result); }
+    catch(err){ toast('JSONの読み込みに失敗しました(ファイル形式を確認してください)'); return; }
+    const rawList = Array.isArray(json) ? json : (Array.isArray(json.roster) ? json.roster : null);
+    if(!rawList){ toast('名簿データの形式が正しくありません'); return; }
+    const sanitized = rawList.map(sanitizeMember).filter(Boolean);
+    if(sanitized.length === 0){ toast('読み込めるメンバーが見つかりませんでした'); return; }
+    pendingImportMembers = sanitized;
+    document.getElementById('importSummaryText').textContent =
+      sanitized.length + '人分のメンバーが見つかりました。現在の名簿(' + roster.length + '人)にどう反映しますか？';
+    document.getElementById('importChoiceOverlay').classList.add('open');
+  };
+  reader.onerror = ()=> toast('ファイルの読み込みに失敗しました');
+  reader.readAsText(file);
+});
+
+function closeImportChoice(){
+  document.getElementById('importChoiceOverlay').classList.remove('open');
+  pendingImportMembers = null;
+}
+document.getElementById('importCancelBtn').addEventListener('click', closeImportChoice);
+document.getElementById('importAppendBtn').addEventListener('click', ()=>{
+  if(!pendingImportMembers) return;
+  roster = roster.concat(pendingImportMembers);
+  saveRoster();
+  ensureMemberImages();
+  renderMemberList();
+  renderBench();
+  toast(pendingImportMembers.length+'人を名簿に追加しました');
+  closeImportChoice();
+});
+document.getElementById('importReplaceBtn').addEventListener('click', ()=>{
+  if(!pendingImportMembers) return;
+  if(!confirm('現在の名簿('+roster.length+'人)を削除して置き換えます。コート上の配置もリセットされます。よろしいですか？')){ return; }
+  roster = pendingImportMembers;
+  layout.slots = {FL:null,FC:null,FR:null,BR:null,BC:null,BL:null};
+  layout.placements = {};
+  saveRoster();
+  saveLayout();
+  ensureMemberImages();
+  renderMemberList();
+  renderBench();
+  requestRender();
+  toast('名簿を置き換えました('+roster.length+'人)');
+  closeImportChoice();
+});
 
 /* ========================= 保存先フォルダ (File System Access API) ========================= */
 function idbOpen(){
