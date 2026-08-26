@@ -187,6 +187,24 @@
   }
   .chip.square .token-face{border-radius:8px;}
   .chip .token-face img{width:100%;height:100%;object-fit:cover;}
+  .token-wrap{position:relative;display:inline-block;}
+  .role-badge{
+    position:absolute;
+    top:-6px;
+    right:-6px;
+    min-width:16px;
+    height:16px;
+    padding:0 4px;
+    border-radius:8px;
+    font-size:9px;
+    font-weight:800;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 1px 2px rgba(0,0,0,.45);
+    border:1px solid rgba(0,0,0,.25);
+    line-height:1;
+    white-space:nowrap;
+  }
+  /* 色は POSITION_META に基づき各バッジへインラインで指定 */
   .chip .chip-name{
     font-size:9px;
     color:var(--sub);
@@ -246,7 +264,8 @@
     background:var(--bg);
     width:100%;
     max-width:520px;
-    max-height:92vh;
+    height:85vh;
+    max-height:85vh;
     border-radius:16px 16px 0 0;
     overflow:hidden;
     display:flex;
@@ -266,6 +285,8 @@
   .modal-body{
     padding:12px 14px 24px;
     overflow-y:auto;
+    flex:1;
+    min-height:0;
   }
   .tabs{
     display:flex;
@@ -586,8 +607,17 @@
             <label>表示する画像</label>
             <label class="filebtn">画像を選択<input type="file" accept="image/*" id="newMemberImage"></label>
           </div>
-          <div class="checkbox-row">
-            <input type="checkbox" id="newMemberLibero"><label for="newMemberLibero">リベロとして登録(枠線に印がつきます)</label>
+          <div class="field">
+            <label>ポジション(右上に小さくバッジ表示・任意)</label>
+            <div class="seg" id="newMemberPositionSeg">
+              <button data-v="" class="active" title="バッジなし">なし</button>
+              <button data-v="S" title="セッター">S</button>
+              <button data-v="OH" title="アウトサイドヒッター">OH</button>
+              <button data-v="MB" title="ミドルブロッカー">MB</button>
+              <button data-v="OP" title="オポジット">OP</button>
+              <button data-v="L" title="リベロ">L</button>
+            </div>
+            <div class="hint">S=セッター / OH=アウトサイドヒッター / MB=ミドルブロッカー / OP=オポジット / L=リベロ</div>
           </div>
           <div class="checkbox-row">
             <input type="checkbox" id="newMemberCustomColor"><label for="newMemberCustomColor">この人だけ枠線色を個別に指定する</label>
@@ -662,7 +692,7 @@
 "use strict";
 
 /* ========================= 定数 ========================= */
-const APP_VERSION = "v2026-08-26 09:09";
+const APP_VERSION = "v2026-08-26 10:54";
 const LS_KEY_ROSTER = "brickpos_roster_v1";
 const LS_KEY_SETTINGS = "brickpos_settings_v1";
 const LS_KEY_LAYOUT = "brickpos_layout_v1";
@@ -671,6 +701,15 @@ const IDB_STORE = "handles";
 const IDB_KEY_DIR = "saveDir";
 
 const SWATCH_COLORS = ["#ffffff","#4FC3D9","#FFD166","#EF476F","#06D6A0","#8A5CF6","#F4A259"];
+
+// ポジションバッジの定義(トークン右上に小さく表示する1文字/2文字バッジ)
+const POSITION_META = {
+  S:  {label:"セッター",           bg:"#4FC3D9", fg:"#0f2a30"},
+  OH: {label:"アウトサイドヒッター", bg:"#06D6A0", fg:"#06301f"},
+  MB: {label:"ミドルブロッカー",     bg:"#8A5CF6", fg:"#ffffff"},
+  OP: {label:"オポジット",          bg:"#EF476F", fg:"#ffffff"},
+  L:  {label:"リベロ",             bg:"#FFD166", fg:"#3a2a00"}
+};
 
 const COURT_W = 720, COURT_H = 720; // 論理描画サイズ(正方形。6人制コート=9m四方、9人制コート=10m四方だが、いずれも正方形なので同じ描画枠を使用)
 const MARGIN = 36;
@@ -684,7 +723,7 @@ const attackLineY = courtTop + courtDepth * (3/9); // ネットから3m(6人制9
 const TOKEN_R = 40; // トークン半径(論理px)
 
 /* ========================= 状態 ========================= */
-let roster = [];      // {id,name,type,value,imageData,libero,customColor,color}
+let roster = [];      // {id,name,type,value,imageData,position('' |'S'|'OH'|'MB'|'OP'|'L'),customColor,color}
 let settings = {
   shape: "circle",
   defaultColor: "#ffffff",
@@ -720,6 +759,18 @@ function loadAll(){
   try{ const r = localStorage.getItem(LS_KEY_ROSTER); if(r) roster = JSON.parse(r); }catch(e){}
   try{ const s = localStorage.getItem(LS_KEY_SETTINGS); if(s) Object.assign(settings, JSON.parse(s)); }catch(e){}
   try{ const l = localStorage.getItem(LS_KEY_LAYOUT); if(l) Object.assign(layout, JSON.parse(l)); }catch(e){}
+  // 旧バージョン(setter/liberoの2つの真偽値)からの移行: position(単一選択)へ変換
+  let migrated = false;
+  roster.forEach(m=>{
+    if(m.position === undefined){
+      if(m.libero) m.position = 'L';
+      else if(m.setter) m.position = 'S';
+      else m.position = '';
+      delete m.setter; delete m.libero;
+      migrated = true;
+    }
+  });
+  if(migrated) saveRoster();
   // レイアウトの整合性チェック(存在しないメンバーIDを除去)
   const ids = new Set(roster.map(m=>m.id));
   Object.keys(layout.slots).forEach(k=>{ if(layout.slots[k] && !ids.has(layout.slots[k])) layout.slots[k]=null; });
@@ -846,11 +897,12 @@ function drawGuideGrid(ctx){
       ctx.beginPath(); ctx.moveTo(courtLeft, rowY[i]); ctx.lineTo(courtRight, rowY[i]); ctx.stroke();
     }
   } else {
-    // 2行×3列(6分割・前衛/後衛 × 左中右)
+    // 2行×3列(6分割)。アタックラインとは無関係に、コートを均等に上下2分割する
+    const midY = courtTop + courtDepth/2;
     for(let i=1;i<3;i++){
       ctx.beginPath(); ctx.moveTo(colX[i], courtTop); ctx.lineTo(colX[i], courtBottom); ctx.stroke();
     }
-    ctx.beginPath(); ctx.moveTo(courtLeft, attackLineY); ctx.lineTo(courtRight, attackLineY); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(courtLeft, midY); ctx.lineTo(courtRight, midY); ctx.stroke();
   }
   ctx.restore();
 }
@@ -911,16 +963,38 @@ function drawToken(ctx, member, x, y){
   ctx.shadowBlur = 4;
   ctx.stroke();
   ctx.shadowBlur = 0;
-  // リベロ印
-  if(member.libero){
+  // ポジションバッジ(S/OH/MB/OP/L)。トークン右上に小さく表示
+  if(member.position && POSITION_META[member.position]){
+    const meta = POSITION_META[member.position];
+    const label = member.position;
+    ctx.font = 'bold 11px sans-serif';
+    const textW = ctx.measureText(label).width;
+    const padX = 5;
+    const bw = Math.max(18, textW + padX*2);
+    const bh = 17;
+    const bx = x + TOKEN_R - bw + 6; // バッジ右端がトークン右端付近に来るよう調整
+    const by = y - TOKEN_R - bh/2 + 6;
+    const r = bh/2;
+    ctx.save();
     ctx.beginPath();
-    ctx.fillStyle = '#FFD166';
-    ctx.arc(x+TOKEN_R-9, y-TOKEN_R+9, 11, 0, Math.PI*2);
+    ctx.moveTo(bx+r, by);
+    ctx.arcTo(bx+bw, by, bx+bw, by+bh, r);
+    ctx.arcTo(bx+bw, by+bh, bx, by+bh, r);
+    ctx.arcTo(bx, by+bh, bx, by, r);
+    ctx.arcTo(bx, by, bx+bw, by, r);
+    ctx.closePath();
+    ctx.fillStyle = meta.bg;
+    ctx.shadowColor = 'rgba(0,0,0,.4)';
+    ctx.shadowBlur = 3;
     ctx.fill();
-    ctx.fillStyle = '#3a2a00';
-    ctx.font = 'bold 13px sans-serif';
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = 'rgba(0,0,0,.25)';
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+    ctx.fillStyle = meta.fg;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('L', x+TOKEN_R-9, y-TOKEN_R+10);
+    ctx.fillText(label, bx+bw/2, by+bh/2+1);
+    ctx.restore();
   }
   // 文字/番号
   if(member.type !== 'image'){
@@ -1164,7 +1238,12 @@ function tokenFaceHTML(m){
   let inner = '';
   if(m.type === 'image' && m.imageData){ inner = '<img src="'+m.imageData+'">'; }
   else { inner = escapeHTML(m.value || '?'); }
-  return '<div class="token-face" style="border-color:'+color+'">'+inner+'</div>';
+  let badgeHTML = '';
+  if(m.position && POSITION_META[m.position]){
+    const meta = POSITION_META[m.position];
+    badgeHTML = '<span class="role-badge" style="background:'+meta.bg+';color:'+meta.fg+';">'+m.position+'</span>';
+  }
+  return '<span class="token-wrap"><div class="token-face" style="border-color:'+color+'">'+inner+'</div>'+badgeHTML+'</span>';
 }
 
 function escapeHTML(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -1436,6 +1515,12 @@ document.querySelectorAll('#newMemberTypeSeg button').forEach(btn=>{
     document.getElementById('newMemberImageWrap').style.display = isImg ? 'block':'none';
   });
 });
+document.querySelectorAll('#newMemberPositionSeg button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('#newMemberPositionSeg button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+  });
+});
 document.getElementById('newMemberCustomColor').addEventListener('change', (e)=>{
   document.getElementById('newMemberColorWrap').style.display = e.target.checked ? 'block':'none';
 });
@@ -1466,7 +1551,7 @@ document.getElementById('addMemberBtn').addEventListener('click', ()=>{
   const name = document.getElementById('newMemberName').value.trim();
   const type = document.querySelector('#newMemberTypeSeg button.active').dataset.v;
   const value = document.getElementById('newMemberValue').value.trim();
-  const libero = document.getElementById('newMemberLibero').checked;
+  const position = document.querySelector('#newMemberPositionSeg button.active').dataset.v;
   const customColor = document.getElementById('newMemberCustomColor').checked;
 
   if(!name){ toast('管理用の名前を入力してください'); return; }
@@ -1477,7 +1562,7 @@ document.getElementById('addMemberBtn').addEventListener('click', ()=>{
     id: uid(), name, type,
     value: type==='image' ? '' : value,
     imageData: type==='image' ? newMemberImageData : null,
-    libero, customColor,
+    position, customColor,
     color: customColor ? newMemberColor : null
   };
   roster.push(member);
@@ -1487,7 +1572,7 @@ document.getElementById('addMemberBtn').addEventListener('click', ()=>{
   document.getElementById('newMemberName').value = '';
   document.getElementById('newMemberValue').value = '';
   document.getElementById('newMemberImage').value = '';
-  document.getElementById('newMemberLibero').checked = false;
+  document.querySelectorAll('#newMemberPositionSeg button').forEach((b,i)=>b.classList.toggle('active', i===0));
   document.getElementById('newMemberCustomColor').checked = false;
   document.getElementById('newMemberColorWrap').style.display = 'none';
   newMemberImageData = null;
@@ -1511,7 +1596,7 @@ function renderMemberList(){
       '<div class="m-info"><div class="m-name">'+escapeHTML(m.name)+'</div>' +
       '<div class="m-sub">'+(m.type==='number'?'番号':m.type==='text'?'文字':'画像')+
       (m.type!=='image' ? '：'+escapeHTML(m.value) : '') +
-      (m.libero ? ' ・リベロ':'') + '</div></div>' +
+      (m.position && POSITION_META[m.position] ? ' ・'+POSITION_META[m.position].label+'('+m.position+')' : '') + '</div></div>' +
       '<div class="m-actions"><button class="smallbtn danger" data-act="del">削除</button></div>';
     row.querySelector('[data-act=del]').addEventListener('click', ()=>{
       if(!confirm(m.name+' を名簿から削除しますか？')) return;
