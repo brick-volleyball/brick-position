@@ -1,0 +1,1668 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>BRICK ポジション配置</title>
+<style>
+  :root{
+    --navy:#182338;
+    --turquoise:#4FC3D9;
+    --bg:#0f1626;
+    --panel:#1c2740;
+    --panel2:#233052;
+    --text:#eef2f8;
+    --sub:#9aa7bf;
+    --border:#33415f;
+    --danger:#e0556f;
+    --ok:#4fc3d9;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN",Meiryo,sans-serif;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .app{
+    max-width:520px;
+    margin:0 auto;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    background:var(--bg);
+  }
+  header.topbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:12px 14px;
+    background:var(--navy);
+    position:sticky;
+    top:0;
+    z-index:20;
+  }
+  header.topbar h1{
+    font-size:15px;
+    margin:0;
+    font-weight:700;
+    letter-spacing:.02em;
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  header.topbar h1 .dot{
+    width:8px;height:8px;border-radius:50%;background:var(--turquoise);
+  }
+  .iconbtn{
+    background:var(--panel2);
+    border:1px solid var(--border);
+    color:var(--text);
+    width:38px;height:38px;
+    border-radius:10px;
+    font-size:18px;
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;
+  }
+  .iconbtn:active{transform:scale(.94);}
+  main{
+    flex:1;
+    padding:12px 12px 90px;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .mode-badge{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    align-self:flex-start;
+    background:var(--panel2);
+    border:1px solid var(--border);
+    color:var(--turquoise);
+    font-size:12px;
+    padding:5px 10px;
+    border-radius:999px;
+    font-weight:600;
+  }
+  .court-wrap{
+    position:relative;
+    border-radius:14px;
+    overflow:hidden;
+    border:1px solid var(--border);
+    box-shadow:0 6px 24px rgba(0,0,0,.35);
+    touch-action:none;
+  }
+  .court-wrap canvas{
+    display:block;
+    width:100%;
+    height:auto;
+    touch-action:none;
+  }
+  .label-edit-btn{
+    position:absolute;
+    top:8px;
+    left:8px;
+    z-index:5;
+    background:rgba(15,22,38,.55);
+    border:1px solid rgba(255,255,255,.35);
+    color:#fff;
+    font-size:11px;
+    padding:5px 9px;
+    border-radius:8px;
+    cursor:pointer;
+    backdrop-filter:blur(2px);
+  }
+  .court-toolbar{
+    position:absolute;
+    top:8px;
+    right:8px;
+    z-index:5;
+    display:flex;
+    gap:6px;
+  }
+  .court-toolbar button{
+    background:rgba(15,22,38,.55);
+    border:1px solid rgba(255,255,255,.35);
+    color:#fff;
+    font-size:15px;
+    width:32px;height:32px;
+    border-radius:8px;
+    cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .court-toolbar button.active{
+    background:var(--turquoise);
+    color:#0f1626;
+    border-color:var(--turquoise);
+  }
+  .cap-note{
+    font-size:11px;
+    color:var(--sub);
+    text-align:right;
+  }
+  section.panel{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:10px 12px;
+  }
+  section.panel h2{
+    font-size:12px;
+    color:var(--sub);
+    margin:0 0 8px;
+    font-weight:600;
+    letter-spacing:.03em;
+  }
+  .bench{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+  .bench-empty{
+    font-size:12px;
+    color:var(--sub);
+    padding:6px 0;
+  }
+  .chip{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:3px;
+    cursor:grab;
+    user-select:none;
+    touch-action:none;
+    width:52px;
+  }
+  .chip .token-face{
+    width:42px;height:42px;
+    border-radius:50%;
+    border:2.5px solid #fff;
+    background:#3a4a6b;
+    display:flex;align-items:center;justify-content:center;
+    font-size:14px;font-weight:700;
+    color:#fff;
+    overflow:hidden;
+  }
+  .chip.square .token-face{border-radius:8px;}
+  .chip .token-face img{width:100%;height:100%;object-fit:cover;}
+  .chip .chip-name{
+    font-size:9px;
+    color:var(--sub);
+    max-width:52px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .bottombar{
+    position:fixed;
+    left:0;right:0;bottom:0;
+    z-index:30;
+    background:var(--navy);
+    border-top:1px solid var(--border);
+    padding:8px 12px calc(8px + env(safe-area-inset-bottom));
+  }
+  .bottombar-inner{
+    max-width:520px;
+    margin:0 auto;
+    display:flex;
+    gap:8px;
+  }
+  .btn{
+    flex:1;
+    border:none;
+    border-radius:10px;
+    padding:12px 8px;
+    font-size:13px;
+    font-weight:700;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:5px;
+  }
+  .btn-primary{background:var(--turquoise);color:#0f1626;}
+  .btn-secondary{background:var(--panel2);color:var(--text);border:1px solid var(--border);}
+  .btn:active{transform:scale(.97);}
+  .version{
+    text-align:center;
+    font-size:10px;
+    color:#5c6884;
+    padding:6px 0 2px;
+  }
+
+  /* modal */
+  .modal-overlay{
+    position:fixed;inset:0;
+    background:rgba(5,8,16,.72);
+    z-index:100;
+    display:none;
+    align-items:flex-end;
+    justify-content:center;
+  }
+  .modal-overlay.open{display:flex;}
+  .modal{
+    background:var(--bg);
+    width:100%;
+    max-width:520px;
+    max-height:92vh;
+    border-radius:16px 16px 0 0;
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+    border:1px solid var(--border);
+    border-bottom:none;
+  }
+  .modal-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:12px 14px;
+    background:var(--navy);
+    position:sticky;top:0;
+  }
+  .modal-header h2{font-size:15px;margin:0;font-weight:700;}
+  .modal-body{
+    padding:12px 14px 24px;
+    overflow-y:auto;
+  }
+  .tabs{
+    display:flex;
+    gap:6px;
+    padding:10px 14px 0;
+    background:var(--navy);
+    overflow-x:auto;
+  }
+  .tab{
+    background:transparent;
+    border:none;
+    color:var(--sub);
+    font-size:12.5px;
+    font-weight:700;
+    padding:8px 10px;
+    border-bottom:2px solid transparent;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .tab.active{color:var(--turquoise);border-bottom-color:var(--turquoise);}
+  .field{margin-bottom:14px;}
+  .field label{
+    display:block;
+    font-size:12px;
+    color:var(--sub);
+    margin-bottom:6px;
+    font-weight:600;
+  }
+  .field input[type=text],
+  .field input[type=number],
+  select{
+    width:100%;
+    background:var(--panel2);
+    border:1px solid var(--border);
+    color:var(--text);
+    padding:10px 10px;
+    border-radius:8px;
+    font-size:14px;
+  }
+  .seg{
+    display:flex;
+    gap:6px;
+    flex-wrap:wrap;
+  }
+  .seg button{
+    flex:1;
+    min-width:80px;
+    background:var(--panel2);
+    border:1px solid var(--border);
+    color:var(--text);
+    padding:9px 8px;
+    border-radius:8px;
+    font-size:12.5px;
+    cursor:pointer;
+  }
+  .seg button.active{background:var(--turquoise);color:#0f1626;border-color:var(--turquoise);font-weight:700;}
+  .swatches{display:flex;gap:8px;flex-wrap:wrap;}
+  .swatch{
+    width:30px;height:30px;border-radius:50%;
+    border:2px solid transparent;
+    cursor:pointer;
+  }
+  .swatch.active{border-color:var(--turquoise);}
+  .bg-thumb{
+    display:flex;gap:8px;flex-wrap:wrap;
+  }
+  .bg-opt{
+    width:78px;height:56px;
+    border-radius:8px;
+    border:2px solid var(--border);
+    cursor:pointer;
+    position:relative;
+    overflow:hidden;
+    display:flex;align-items:flex-end;
+    padding:4px;
+    font-size:10px;
+    color:#fff;
+    text-shadow:0 1px 2px rgba(0,0,0,.7);
+  }
+  .bg-opt.active{border-color:var(--turquoise);}
+  .bg-opt img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+  hr.sep{border:none;border-top:1px solid var(--border);margin:16px 0;}
+  .memberlist{display:flex;flex-direction:column;gap:8px;}
+  .member-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    background:var(--panel2);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:8px 10px;
+  }
+  .member-row .token-face{
+    width:36px;height:36px;
+    border-radius:50%;
+    border:2px solid #fff;
+    display:flex;align-items:center;justify-content:center;
+    font-size:12px;font-weight:700;color:#fff;
+    background:#3a4a6b;
+    flex-shrink:0;
+    overflow:hidden;
+  }
+  .member-row .token-face img{width:100%;height:100%;object-fit:cover;}
+  .member-row .m-info{flex:1;min-width:0;}
+  .member-row .m-name{font-size:13px;font-weight:600;}
+  .member-row .m-sub{font-size:11px;color:var(--sub);}
+  .member-row .m-actions{display:flex;gap:6px;}
+  .smallbtn{
+    background:var(--panel);
+    border:1px solid var(--border);
+    color:var(--text);
+    font-size:11px;
+    padding:6px 9px;
+    border-radius:7px;
+    cursor:pointer;
+  }
+  .smallbtn.danger{color:var(--danger);border-color:var(--danger);}
+  .addform{
+    background:var(--panel2);
+    border:1px dashed var(--border);
+    border-radius:10px;
+    padding:12px;
+    margin-top:12px;
+  }
+  .checkbox-row{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--sub);margin-bottom:10px;}
+  .checkbox-row input{width:16px;height:16px;}
+  .filebtn{
+    display:inline-block;
+    background:var(--panel2);
+    border:1px solid var(--border);
+    padding:9px 12px;
+    border-radius:8px;
+    font-size:12.5px;
+    cursor:pointer;
+  }
+  .filebtn input{display:none;}
+  .hint{font-size:11px;color:var(--sub);line-height:1.5;margin-top:4px;}
+  .toast{
+    position:fixed;
+    bottom:78px;
+    left:50%;
+    transform:translateX(-50%);
+    background:#0f1626;
+    border:1px solid var(--turquoise);
+    color:#fff;
+    padding:10px 16px;
+    border-radius:10px;
+    font-size:13px;
+    z-index:200;
+    max-width:88vw;
+    text-align:center;
+    box-shadow:0 8px 20px rgba(0,0,0,.4);
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .2s;
+  }
+  .toast.show{opacity:1;}
+  .folder-status{
+    font-size:12.5px;
+    background:var(--panel2);
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:10px;
+    margin-bottom:10px;
+  }
+  .folder-status .path{color:var(--turquoise);font-weight:600;}
+  .label-editor-overlay{
+    position:fixed;inset:0;
+    background:rgba(5,8,16,.72);
+    z-index:150;
+    display:none;
+    align-items:center;justify-content:center;
+    padding:20px;
+  }
+  .label-editor-overlay.open{display:flex;}
+  .label-editor-box{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:16px;
+    width:100%;
+    max-width:400px;
+  }
+  .label-editor-box h3{margin:0 0 10px;font-size:14px;}
+  .label-editor-box input{
+    width:100%;
+    background:var(--panel2);
+    border:1px solid var(--border);
+    color:var(--text);
+    padding:11px;
+    border-radius:8px;
+    font-size:15px;
+    margin-bottom:12px;
+  }
+  .label-editor-box .row{display:flex;gap:8px;}
+  .picker-overlay{
+    position:fixed;inset:0;
+    background:rgba(5,8,16,.72);
+    z-index:150;
+    display:none;
+    align-items:center;justify-content:center;
+    padding:20px;
+  }
+  .picker-overlay.open{display:flex;}
+  .picker-box{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:16px;
+    width:100%;
+    max-width:420px;
+    max-height:80vh;
+    overflow-y:auto;
+  }
+  .picker-box h3{margin:0 0 12px;font-size:14px;}
+  .picker-list{display:flex;flex-wrap:wrap;gap:10px;}
+  .picker-item{
+    display:flex;flex-direction:column;align-items:center;gap:4px;
+    width:64px;cursor:pointer;
+  }
+  .picker-item .token-face{width:46px;height:46px;border-radius:50%;border:2.5px solid #fff;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;background:#3a4a6b;overflow:hidden;}
+  .picker-item .token-face img{width:100%;height:100%;object-fit:cover;}
+  .picker-item span{font-size:10px;color:var(--sub);text-align:center;max-width:64px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .picker-close{margin-top:14px;}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <h1><span class="dot"></span>BRICK ポジション配置</h1>
+    <button class="iconbtn" id="openSettingsBtn" title="設定">⚙️</button>
+  </header>
+
+  <main>
+    <span class="mode-badge" id="modeBadge">6人制(固定)</span>
+
+    <div class="court-wrap" id="courtWrap">
+      <button class="label-edit-btn" id="labelEditBtn">ラベル: 未設定 ✎</button>
+      <div class="court-toolbar">
+        <button id="gridToggleBtn" title="グリッド表示切替">▦</button>
+        <button id="rotateBtn" title="ローテーション(時計回り)">↻</button>
+      </div>
+      <canvas id="courtCanvas"></canvas>
+    </div>
+    <div class="cap-note" id="capNote"></div>
+
+    <section class="panel">
+      <h2>ベンチ(コート外のメンバー)</h2>
+      <div class="bench" id="benchArea"></div>
+    </section>
+  </main>
+
+  <div class="bottombar">
+    <div class="bottombar-inner">
+      <button class="btn btn-secondary" id="clearCourtBtn">🔄 コートをリセット</button>
+      <button class="btn btn-primary" id="savePngBtn">🖼 PNG保存</button>
+    </div>
+    <div class="version" id="versionLabel"></div>
+  </div>
+</div>
+
+<!-- ラベル編集 -->
+<div class="label-editor-overlay" id="labelEditorOverlay">
+  <div class="label-editor-box">
+    <h3>左上ラベルを編集</h3>
+    <input type="text" id="labelInput" placeholder="例: ○○戦オーダー / ローテーション1" maxlength="40">
+    <div class="row">
+      <button class="btn btn-secondary" id="labelCancelBtn">キャンセル</button>
+      <button class="btn btn-primary" id="labelSaveBtn">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ベンチメンバーの配置先ピッカー(タップ配置用) -->
+<div class="picker-overlay" id="tokenMenuOverlay">
+  <div class="picker-box" id="tokenMenuBox">
+    <h3>操作を選択</h3>
+    <div class="picker-list" id="tokenMenuList"></div>
+    <button class="btn btn-secondary picker-close" id="tokenMenuCloseBtn">閉じる</button>
+  </div>
+</div>
+
+<!-- 設定モーダル -->
+<div class="modal-overlay" id="settingsOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>設定</h2>
+      <button class="iconbtn" id="closeSettingsBtn">✕</button>
+    </div>
+    <div class="tabs">
+      <button class="tab active" data-tab="members">メンバー</button>
+      <button class="tab" data-tab="display">表示</button>
+      <button class="tab" data-tab="court">コート/モード</button>
+      <button class="tab" data-tab="save">保存先</button>
+    </div>
+    <div class="modal-body">
+
+      <div class="tabpane" id="tab-members">
+        <div class="memberlist" id="memberList"></div>
+        <div class="addform">
+          <div class="field">
+            <label>管理用の名前(表示はされません)</label>
+            <input type="text" id="newMemberName" placeholder="例: 山田太郎">
+          </div>
+          <div class="field">
+            <label>コート上の表示タイプ</label>
+            <div class="seg" id="newMemberTypeSeg">
+              <button data-v="number" class="active">番号</button>
+              <button data-v="text">文字</button>
+              <button data-v="image">画像</button>
+            </div>
+          </div>
+          <div class="field" id="newMemberValueWrap">
+            <label>表示する番号/文字</label>
+            <input type="text" id="newMemberValue" maxlength="4" placeholder="例: 7 / エース">
+          </div>
+          <div class="field" id="newMemberImageWrap" style="display:none;">
+            <label>表示する画像</label>
+            <label class="filebtn">画像を選択<input type="file" accept="image/*" id="newMemberImage"></label>
+          </div>
+          <div class="checkbox-row">
+            <input type="checkbox" id="newMemberLibero"><label for="newMemberLibero">リベロとして登録(枠線に印がつきます)</label>
+          </div>
+          <div class="checkbox-row">
+            <input type="checkbox" id="newMemberCustomColor"><label for="newMemberCustomColor">この人だけ枠線色を個別に指定する</label>
+          </div>
+          <div class="field" id="newMemberColorWrap" style="display:none;">
+            <div class="swatches" id="newMemberColorSwatches"></div>
+          </div>
+          <button class="btn btn-primary" id="addMemberBtn" style="width:100%;">＋ 名簿に追加</button>
+        </div>
+      </div>
+
+      <div class="tabpane" id="tab-display" style="display:none;">
+        <div class="field">
+          <label>メンバーの形</label>
+          <div class="seg" id="shapeSeg">
+            <button data-v="circle" class="active">〇 丸</button>
+            <button data-v="square">□ 四角</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>既定の枠線色(個別指定がない場合)</label>
+          <div class="swatches" id="defaultColorSwatches"></div>
+        </div>
+        <div class="hint">個別に枠線色を指定したメンバーは、メンバー設定側の色が優先されます。</div>
+      </div>
+
+      <div class="tabpane" id="tab-court" style="display:none;">
+        <div class="field">
+          <label>コート背景</label>
+          <div class="bg-thumb" id="bgOptions"></div>
+          <label class="filebtn" style="margin-top:8px;">カスタム画像をアップロード<input type="file" accept="image/*" id="customBgInput"></label>
+        </div>
+        <hr class="sep">
+        <div class="field">
+          <label>配置モード</label>
+          <div class="seg" id="modeSeg">
+            <button data-v="fixed6">6人制(固定)</button>
+            <button data-v="free6">6人制(自由配置)</button>
+            <button data-v="free9">9人制(自由配置)</button>
+            <button data-v="unlimited">制限なし</button>
+          </div>
+          <div class="hint">モードを切り替えるとコート上の配置はリセットされます(名簿は消えません)。</div>
+        </div>
+        <hr class="sep">
+        <div class="field">
+          <label>ガイド用グリッド</label>
+          <div class="checkbox-row">
+            <input type="checkbox" id="gridDefaultToggle" checked><label for="gridDefaultToggle">コートにガイド用グリッドを表示する(配置モードに関わらずON/OFF切替可能。コート画面右上のボタンでも切替できます)</label>
+          </div>
+          <div class="seg" id="gridDivisionSeg">
+            <button data-v="6">6分割(2×3)</button>
+            <button data-v="9">9分割(3×3)</button>
+          </div>
+          <div class="hint">6分割・9分割は配置モード(6人制/9人制/制限なし)に関わらず、いつでも選べます。</div>
+        </div>
+      </div>
+
+      <div class="tabpane" id="tab-save" style="display:none;">
+        <div class="folder-status" id="folderStatus">保存先フォルダは未設定です。未設定の場合は保存のたびにダウンロードされます。</div>
+        <button class="btn btn-primary" id="pickFolderBtn" style="width:100%;">📁 保存先フォルダを選択</button>
+        <div class="hint">対応環境(Android Chrome / PC Chrome等)では、一度選択したフォルダを次回以降も記憶します。iPhone Safari等、File System Access APIに非対応の環境では、常にダウンロードフォルダへの保存になります。</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ========================= 定数 ========================= */
+const APP_VERSION = "v2026-08-26 09:09";
+const LS_KEY_ROSTER = "brickpos_roster_v1";
+const LS_KEY_SETTINGS = "brickpos_settings_v1";
+const LS_KEY_LAYOUT = "brickpos_layout_v1";
+const IDB_NAME = "brickpos_db";
+const IDB_STORE = "handles";
+const IDB_KEY_DIR = "saveDir";
+
+const SWATCH_COLORS = ["#ffffff","#4FC3D9","#FFD166","#EF476F","#06D6A0","#8A5CF6","#F4A259"];
+
+const COURT_W = 720, COURT_H = 720; // 論理描画サイズ(正方形。6人制コート=9m四方、9人制コート=10m四方だが、いずれも正方形なので同じ描画枠を使用)
+const MARGIN = 36;
+// コート境界(ネットが上)
+const courtTop = MARGIN, courtBottom = COURT_H - MARGIN;
+const courtLeft = MARGIN, courtRight = COURT_W - MARGIN;
+const courtDepth = courtBottom - courtTop;
+const courtWidth = courtRight - courtLeft;
+const attackLineY = courtTop + courtDepth * (3/9); // ネットから3m(6人制9m四方の場合の目安。9人制でも同じ位置を目安線として使用)
+
+const TOKEN_R = 40; // トークン半径(論理px)
+
+/* ========================= 状態 ========================= */
+let roster = [];      // {id,name,type,value,imageData,libero,customColor,color}
+let settings = {
+  shape: "circle",
+  defaultColor: "#ffffff",
+  courtBg: "orange",   // orange | wood | custom | plain
+  customBgData: null,
+  mode: "fixed6",       // fixed6 | free6 | free9 | unlimited
+  showGrid: true,
+  gridDivision: "6",    // "6"(2行×3列) | "9"(3行×3列)。モードに関わらず選択可能
+  saveFolderName: null
+};
+let layout = {
+  label: "",
+  // fixed6用: スロットID -> memberId
+  slots: { FL:null, FC:null, FR:null, BR:null, BC:null, BL:null },
+  // free系用: memberId -> {x,y}(0-1の court内相対座標)
+  placements: {}
+};
+
+let dragState = null; // {id, sourceType:'court'|'bench', offsetX, offsetY}
+let dirHandle = null; // FileSystemDirectoryHandle (メモリ上、IndexedDBにも保存)
+
+const SLOT_ORDER = ["FL","FC","FR","BR","BC","BL"];
+const SLOT_LABELS = {FL:"前衛左",FC:"前衛中",FR:"前衛右",BR:"後衛右",BC:"後衛中",BL:"後衛左"};
+
+/* ========================= ユーティリティ ========================= */
+function uid(){ return 'm_' + Math.random().toString(36).slice(2,10) + Date.now().toString(36); }
+
+function saveRoster(){ localStorage.setItem(LS_KEY_ROSTER, JSON.stringify(roster)); }
+function saveSettings(){ localStorage.setItem(LS_KEY_SETTINGS, JSON.stringify(settings)); }
+function saveLayout(){ localStorage.setItem(LS_KEY_LAYOUT, JSON.stringify(layout)); }
+
+function loadAll(){
+  try{ const r = localStorage.getItem(LS_KEY_ROSTER); if(r) roster = JSON.parse(r); }catch(e){}
+  try{ const s = localStorage.getItem(LS_KEY_SETTINGS); if(s) Object.assign(settings, JSON.parse(s)); }catch(e){}
+  try{ const l = localStorage.getItem(LS_KEY_LAYOUT); if(l) Object.assign(layout, JSON.parse(l)); }catch(e){}
+  // レイアウトの整合性チェック(存在しないメンバーIDを除去)
+  const ids = new Set(roster.map(m=>m.id));
+  Object.keys(layout.slots).forEach(k=>{ if(layout.slots[k] && !ids.has(layout.slots[k])) layout.slots[k]=null; });
+  Object.keys(layout.placements).forEach(k=>{ if(!ids.has(k)) delete layout.placements[k]; });
+}
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toast._tm);
+  toast._tm = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+function capacityForMode(mode){
+  if(mode === 'fixed6' || mode === 'free6') return 6;
+  if(mode === 'free9') return 9;
+  return Infinity;
+}
+
+function placedMemberIds(){
+  if(settings.mode === 'fixed6'){
+    return Object.values(layout.slots).filter(Boolean);
+  }
+  return Object.keys(layout.placements);
+}
+
+function isPlaced(id){
+  if(settings.mode === 'fixed6') return Object.values(layout.slots).includes(id);
+  return !!layout.placements[id];
+}
+
+/* ========================= 画像リサイズ ========================= */
+function resizeImageFile(file, maxDim, quality){
+  return new Promise((resolve, reject)=>{
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = function(e){
+      img.onload = function(){
+        let w = img.width, h = img.height;
+        if(w > h){ if(w > maxDim){ h = Math.round(h * maxDim/w); w = maxDim; } }
+        else { if(h > maxDim){ w = Math.round(w * maxDim/h); h = maxDim; } }
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        const cx = c.getContext('2d');
+        cx.drawImage(img, 0, 0, w, h);
+        resolve(c.toDataURL('image/jpeg', quality || 0.85));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+/* ========================= 背景プリセット(CSS/Canvasで生成) ========================= */
+function drawCourtBackground(ctx){
+  ctx.save();
+  if(settings.courtBg === 'custom' && settings.customBgData){
+    if(!drawCourtBackground._img || drawCourtBackground._src !== settings.customBgData){
+      drawCourtBackground._img = new Image();
+      drawCourtBackground._img.src = settings.customBgData;
+      drawCourtBackground._src = settings.customBgData;
+    }
+    const img = drawCourtBackground._img;
+    if(img.complete && img.naturalWidth){
+      // カバーフィット
+      const scale = Math.max(COURT_W/img.naturalWidth, COURT_H/img.naturalHeight);
+      const dw = img.naturalWidth*scale, dh = img.naturalHeight*scale;
+      ctx.drawImage(img, (COURT_W-dw)/2, (COURT_H-dh)/2, dw, dh);
+    } else {
+      ctx.fillStyle = '#233052'; ctx.fillRect(0,0,COURT_W,COURT_H);
+      img.onload = ()=> requestRender();
+    }
+  } else if(settings.courtBg === 'wood'){
+    const grad = ctx.createLinearGradient(0,0,COURT_W,0);
+    grad.addColorStop(0,'#b6884b'); grad.addColorStop(1,'#c99b5f');
+    ctx.fillStyle = grad; ctx.fillRect(0,0,COURT_W,COURT_H);
+    ctx.strokeStyle = 'rgba(90,58,20,.35)'; ctx.lineWidth = 2;
+    for(let x=0; x<COURT_W; x+=COURT_W/14){
+      ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,COURT_H); ctx.stroke();
+    }
+  } else if(settings.courtBg === 'plain'){
+    ctx.fillStyle = '#22304d'; ctx.fillRect(0,0,COURT_W,COURT_H);
+  } else { // orange (既定)
+    const grad = ctx.createLinearGradient(0,0,0,COURT_H);
+    grad.addColorStop(0,'#e07a2e'); grad.addColorStop(1,'#c9631d');
+    ctx.fillStyle = grad; ctx.fillRect(0,0,COURT_W,COURT_H);
+  }
+  ctx.restore();
+}
+
+function drawCourtLines(ctx){
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,255,255,.92)';
+  ctx.lineWidth = 4;
+  ctx.shadowColor = 'rgba(0,0,0,.35)';
+  ctx.shadowBlur = 2;
+  // 外枠
+  ctx.strokeRect(courtLeft, courtTop, courtWidth, courtDepth);
+  // ネット(上辺を太く)
+  ctx.lineWidth = 7;
+  ctx.beginPath(); ctx.moveTo(courtLeft-6, courtTop); ctx.lineTo(courtRight+6, courtTop); ctx.stroke();
+  // アタックライン
+  ctx.lineWidth = 3;
+  ctx.setLineDash([]);
+  ctx.beginPath(); ctx.moveTo(courtLeft, attackLineY); ctx.lineTo(courtRight, attackLineY); ctx.stroke();
+  ctx.restore();
+}
+
+function drawGuideGrid(ctx){
+  if(!settings.showGrid) return;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,255,255,.55)';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([8,7]);
+  const colX = [courtLeft, courtLeft+courtWidth/3, courtLeft+courtWidth*2/3, courtRight];
+  if(settings.gridDivision === '9'){
+    // 3行×3列(9分割)
+    const rowY = [courtTop, courtTop+courtDepth/3, courtTop+courtDepth*2/3, courtBottom];
+    for(let i=1;i<3;i++){
+      ctx.beginPath(); ctx.moveTo(colX[i], courtTop); ctx.lineTo(colX[i], courtBottom); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(courtLeft, rowY[i]); ctx.lineTo(courtRight, rowY[i]); ctx.stroke();
+    }
+  } else {
+    // 2行×3列(6分割・前衛/後衛 × 左中右)
+    for(let i=1;i<3;i++){
+      ctx.beginPath(); ctx.moveTo(colX[i], courtTop); ctx.lineTo(colX[i], courtBottom); ctx.stroke();
+    }
+    ctx.beginPath(); ctx.moveTo(courtLeft, attackLineY); ctx.lineTo(courtRight, attackLineY); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function slotCoord(slot){
+  const colX = { L: courtLeft+courtWidth/6, C: courtLeft+courtWidth/2, R: courtRight-courtWidth/6 };
+  const frontY = courtTop + (attackLineY-courtTop)/2;
+  const backY = attackLineY + (courtBottom-attackLineY)/2;
+  const map = {
+    FL:{x:colX.L,y:frontY}, FC:{x:colX.C,y:frontY}, FR:{x:colX.R,y:frontY},
+    BR:{x:colX.R,y:backY}, BC:{x:colX.C,y:backY}, BL:{x:colX.L,y:backY}
+  };
+  return map[slot];
+}
+
+function drawEmptySlotMarker(ctx, x, y){
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,255,255,.6)';
+  ctx.setLineDash([5,5]);
+  ctx.lineWidth = 2.5;
+  if(settings.shape === 'square'){
+    ctx.strokeRect(x-TOKEN_R, y-TOKEN_R, TOKEN_R*2, TOKEN_R*2);
+  } else {
+    ctx.beginPath(); ctx.arc(x,y,TOKEN_R,0,Math.PI*2); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function memberById(id){ return roster.find(m=>m.id===id); }
+
+function drawToken(ctx, member, x, y){
+  if(!member) return;
+  const color = member.customColor ? (member.color || settings.defaultColor) : settings.defaultColor;
+  ctx.save();
+  // クリップパス
+  ctx.beginPath();
+  if(settings.shape === 'square'){
+    ctx.rect(x-TOKEN_R, y-TOKEN_R, TOKEN_R*2, TOKEN_R*2);
+  } else {
+    ctx.arc(x, y, TOKEN_R, 0, Math.PI*2);
+  }
+  ctx.save();
+  ctx.clip();
+  if(member.type === 'image' && member._img && member._img.complete && member._img.naturalWidth){
+    const img = member._img;
+    const scale = Math.max((TOKEN_R*2)/img.naturalWidth, (TOKEN_R*2)/img.naturalHeight);
+    const dw = img.naturalWidth*scale, dh = img.naturalHeight*scale;
+    ctx.drawImage(img, x-dw/2, y-dh/2, dw, dh);
+  } else {
+    ctx.fillStyle = '#3a4a6b';
+    ctx.fillRect(x-TOKEN_R, y-TOKEN_R, TOKEN_R*2, TOKEN_R*2);
+  }
+  ctx.restore();
+  // 枠線
+  ctx.lineWidth = 5;
+  ctx.strokeStyle = color;
+  ctx.shadowColor = 'rgba(0,0,0,.4)';
+  ctx.shadowBlur = 4;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+  // リベロ印
+  if(member.libero){
+    ctx.beginPath();
+    ctx.fillStyle = '#FFD166';
+    ctx.arc(x+TOKEN_R-9, y-TOKEN_R+9, 11, 0, Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle = '#3a2a00';
+    ctx.font = 'bold 13px sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('L', x+TOKEN_R-9, y-TOKEN_R+10);
+  }
+  // 文字/番号
+  if(member.type !== 'image'){
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold ' + (member.type==='number' ? 26 : 18) + 'px sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.shadowColor = 'rgba(0,0,0,.6)'; ctx.shadowBlur = 3;
+    ctx.fillText(member.value || '?', x, y+1);
+  }
+  ctx.restore();
+}
+
+function drawLabel(ctx){
+  if(!layout.label) return;
+  ctx.save();
+  const text = layout.label;
+  ctx.font = 'bold 24px sans-serif';
+  const padX = 12, padY = 8;
+  const w = ctx.measureText(text).width + padX*2;
+  ctx.fillStyle = 'rgba(15,22,38,.62)';
+  ctx.fillRect(14, 12, w, 36);
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, 14+padX, 12+18);
+  ctx.restore();
+}
+
+/* ========================= レンダリング(メイン画面) ========================= */
+const canvas = document.getElementById('courtCanvas');
+const ctx = canvas.getContext('2d');
+let renderScheduled = false;
+function requestRender(){
+  if(renderScheduled) return;
+  renderScheduled = true;
+  requestAnimationFrame(()=>{ renderScheduled = false; render(); });
+}
+
+function setupCanvasSize(){
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = COURT_W * dpr;
+  canvas.height = COURT_H * dpr;
+  canvas.style.aspectRatio = (COURT_W/COURT_H).toString();
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+
+function render(){
+  ctx.clearRect(0,0,COURT_W,COURT_H);
+  drawCourtBackground(ctx);
+  drawCourtLines(ctx);
+  drawGuideGrid(ctx);
+
+  if(settings.mode === 'fixed6'){
+    const draggingId = (dragState && dragState.dragging) ? dragState.id : null;
+    const hoverSlot = (dragState && dragState.dragging) ? dragState.hoverSlot : null;
+    SLOT_ORDER.forEach(slot=>{
+      const {x,y} = slotCoord(slot);
+      if(slot === hoverSlot){
+        ctx.save();
+        ctx.strokeStyle = 'rgba(79,195,217,.95)';
+        ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.arc(x,y,TOKEN_R+7,0,Math.PI*2); ctx.stroke();
+        ctx.restore();
+      }
+      const mid = layout.slots[slot];
+      if(mid && mid !== draggingId){ drawToken(ctx, memberById(mid), x, y); }
+      else if(!mid || mid === draggingId){ drawEmptySlotMarker(ctx, x, y); }
+    });
+    if(draggingId && dragState.ghostX != null){
+      ctx.save();
+      ctx.globalAlpha = 0.85;
+      drawToken(ctx, memberById(draggingId), dragState.ghostX, dragState.ghostY);
+      ctx.restore();
+    }
+  } else {
+    Object.keys(layout.placements).forEach(id=>{
+      const p = layout.placements[id];
+      const m = memberById(id);
+      if(!m) return;
+      drawToken(ctx, m, courtLeft + p.x*courtWidth, courtTop + p.y*courtDepth);
+    });
+  }
+  drawLabel(ctx);
+}
+
+/* PNGエクスポート用(グリッド・空スロット枠を含めない) */
+function renderForExport(){
+  const scale = 2; // 高解像度出力
+  const c = document.createElement('canvas');
+  c.width = COURT_W*scale; c.height = COURT_H*scale;
+  const cx = c.getContext('2d');
+  cx.scale(scale,scale);
+  drawCourtBackground(cx);
+  drawCourtLines(cx);
+  if(settings.mode === 'fixed6'){
+    SLOT_ORDER.forEach(slot=>{
+      const {x,y} = slotCoord(slot);
+      const mid = layout.slots[slot];
+      if(mid) drawToken(cx, memberById(mid), x, y);
+    });
+  } else {
+    Object.keys(layout.placements).forEach(id=>{
+      const p = layout.placements[id];
+      const m = memberById(id);
+      if(!m) return;
+      drawToken(cx, m, courtLeft + p.x*courtWidth, courtTop + p.y*courtDepth);
+    });
+  }
+  drawLabel(cx);
+  return c;
+}
+
+/* ========================= 画像プリロード(メンバー) ========================= */
+function ensureMemberImages(){
+  roster.forEach(m=>{
+    if(m.type === 'image' && m.imageData && !m._img){
+      const img = new Image();
+      img.onload = ()=> requestRender();
+      img.src = m.imageData;
+      m._img = img;
+    }
+  });
+}
+
+/* ========================= ポインター操作(ドラッグ) ========================= */
+function canvasPointFromEvent(e){
+  const rect = canvas.getBoundingClientRect();
+  const x = (e.clientX - rect.left) / rect.width * COURT_W;
+  const y = (e.clientY - rect.top) / rect.height * COURT_H;
+  return {x,y};
+}
+
+function hitTestCourt(x,y){
+  if(settings.mode === 'fixed6'){
+    for(const slot of SLOT_ORDER){
+      const mid = layout.slots[slot];
+      if(!mid) continue;
+      const c = slotCoord(slot);
+      if(Math.hypot(c.x-x, c.y-y) <= TOKEN_R+4) return {id:mid, slot};
+    }
+    return null;
+  }
+  let found = null;
+  Object.keys(layout.placements).forEach(id=>{
+    const p = layout.placements[id];
+    const cx2 = courtLeft + p.x*courtWidth, cy2 = courtTop + p.y*courtDepth;
+    if(Math.hypot(cx2-x, cy2-y) <= TOKEN_R+4) found = {id};
+  });
+  return found;
+}
+
+canvas.addEventListener('pointerdown', (e)=>{
+  const pt = canvasPointFromEvent(e);
+  const hit = hitTestCourt(pt.x, pt.y);
+  if(!hit) return;
+  e.preventDefault();
+  canvas.setPointerCapture(e.pointerId);
+  dragState = { id: hit.id, fromSlot: hit.slot || null, dragging:true };
+});
+canvas.addEventListener('pointermove', (e)=>{
+  if(!dragState || !dragState.dragging) return;
+  e.preventDefault();
+  const pt = canvasPointFromEvent(e);
+  const clampedX = Math.min(Math.max(pt.x, courtLeft), courtRight);
+  const clampedY = Math.min(Math.max(pt.y, courtTop), courtBottom);
+  if(settings.mode === 'fixed6'){
+    // 固定モードはドラッグでスロット同士を入れ替え
+    let nearestSlot = null, nearestD = Infinity;
+    SLOT_ORDER.forEach(slot=>{
+      const c = slotCoord(slot);
+      const d = Math.hypot(c.x-pt.x, c.y-pt.y);
+      if(d < nearestD){ nearestD = d; nearestSlot = slot; }
+    });
+    dragState.hoverSlot = nearestSlot;
+    dragState.ghostX = clampedX;
+    dragState.ghostY = clampedY;
+    requestRender();
+  } else {
+    layout.placements[dragState.id] = {
+      x: (clampedX - courtLeft)/courtWidth,
+      y: (clampedY - courtTop)/courtDepth
+    };
+    requestRender();
+  }
+});
+canvas.addEventListener('pointerup', (e)=>{
+  if(!dragState || !dragState.dragging) return;
+  if(settings.mode === 'fixed6' && dragState.hoverSlot){
+    const targetSlot = dragState.hoverSlot;
+    const fromSlot = dragState.fromSlot;
+    if(targetSlot !== fromSlot){
+      const targetOccupant = layout.slots[targetSlot];
+      layout.slots[targetSlot] = dragState.id;
+      layout.slots[fromSlot] = targetOccupant || null;
+    }
+  }
+  dragState = null;
+  saveLayout();
+  renderBench();
+  requestRender();
+});
+canvas.addEventListener('pointercancel', ()=>{ dragState=null; requestRender(); });
+
+/* シンプルなタップ判定: pointerup時にほぼ動いていなければメニューを開く(タップ=コート上トークンの操作メニュー) */
+let downPoint = null;
+canvas.addEventListener('pointerdown', (e)=>{ downPoint = {x:e.clientX,y:e.clientY}; });
+canvas.addEventListener('pointerup', (e)=>{
+  if(!downPoint) return;
+  const moved = Math.hypot(e.clientX-downPoint.x, e.clientY-downPoint.y);
+  downPoint = null;
+  if(moved > 6) return; // ドラッグとみなす
+  const pt = canvasPointFromEvent(e);
+  const hit = hitTestCourt(pt.x, pt.y);
+  if(hit){ openCourtTokenMenu(hit.id, hit.slot || null); }
+});
+
+/* ========================= ベンチ ========================= */
+function renderBench(){
+  const bench = document.getElementById('benchArea');
+  bench.innerHTML = '';
+  const unplaced = roster.filter(m => !isPlaced(m.id));
+  if(unplaced.length === 0){
+    const d = document.createElement('div');
+    d.className = 'bench-empty';
+    d.textContent = roster.length === 0 ? '名簿にメンバーがいません。設定 > メンバー から追加してください。' : '全員コートに配置済みです。';
+    bench.appendChild(d);
+  }
+  unplaced.forEach(m=>{
+    const chip = document.createElement('div');
+    chip.className = 'chip' + (settings.shape==='square' ? ' square':'');
+    chip.innerHTML = tokenFaceHTML(m) + '<div class="chip-name">'+escapeHTML(m.name||'')+'</div>';
+    chip.addEventListener('click', ()=> placeFromBench(m.id));
+    bench.appendChild(chip);
+  });
+  document.getElementById('capNote').textContent =
+    capacityForMode(settings.mode) === Infinity ? '配置人数: 制限なし'
+    : `配置: ${placedMemberIds().length} / ${capacityForMode(settings.mode)} 人`;
+}
+
+function tokenFaceHTML(m){
+  const color = m.customColor ? (m.color || settings.defaultColor) : settings.defaultColor;
+  let inner = '';
+  if(m.type === 'image' && m.imageData){ inner = '<img src="'+m.imageData+'">'; }
+  else { inner = escapeHTML(m.value || '?'); }
+  return '<div class="token-face" style="border-color:'+color+'">'+inner+'</div>';
+}
+
+function escapeHTML(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function placeFromBench(id){
+  const cap = capacityForMode(settings.mode);
+  if(placedMemberIds().length >= cap){ toast('この配置モードでは最大'+cap+'人までです'); return; }
+  if(settings.mode === 'fixed6'){
+    const emptySlot = SLOT_ORDER.find(s => !layout.slots[s]);
+    if(!emptySlot){ toast('空いているスロットがありません'); return; }
+    layout.slots[emptySlot] = id;
+  } else {
+    // 空いている場所を軽く分散配置
+    const n = Object.keys(layout.placements).length;
+    const cols = settings.mode === 'free9' || settings.mode === 'unlimited' ? 3 : 3;
+    const col = n % cols, row = Math.floor(n / cols) % 3;
+    layout.placements[id] = { x: (col+0.5)/cols, y: 0.18 + row*0.28 };
+  }
+  saveLayout();
+  renderBench();
+  requestRender();
+}
+
+function returnToBench(id){
+  if(settings.mode === 'fixed6'){
+    SLOT_ORDER.forEach(s=>{ if(layout.slots[s]===id) layout.slots[s]=null; });
+  } else {
+    delete layout.placements[id];
+  }
+  saveLayout();
+  renderBench();
+  requestRender();
+}
+
+/* コート上トークンをタップした時のメニュー(ベンチに戻す / 別メンバーに差し替え) */
+function openCourtTokenMenu(id, slot){
+  const overlay = document.getElementById('tokenMenuOverlay');
+  const box = document.getElementById('tokenMenuBox');
+  box.querySelector('h3').textContent = (memberById(id)?memberById(id).name:'') || '操作を選択';
+  const list = document.getElementById('tokenMenuList');
+  list.innerHTML = '';
+
+  const backBtn = document.createElement('div');
+  backBtn.className = 'picker-item';
+  backBtn.innerHTML = '<div class="token-face" style="background:#5c6884;">↩</div><span>ベンチに戻す</span>';
+  backBtn.addEventListener('click', ()=>{ returnToBench(id); closeTokenMenu(); });
+  list.appendChild(backBtn);
+
+  // 差し替え候補(ベンチにいる他メンバー)
+  roster.filter(m=>!isPlaced(m.id)).forEach(m=>{
+    const item = document.createElement('div');
+    item.className = 'picker-item';
+    item.innerHTML = tokenFaceHTML(m) + '<span>'+escapeHTML(m.name||'')+'に差替</span>';
+    item.addEventListener('click', ()=>{
+      if(settings.mode === 'fixed6' && slot){
+        layout.slots[slot] = m.id;
+      } else {
+        layout.placements[m.id] = layout.placements[id];
+        delete layout.placements[id];
+      }
+      saveLayout(); renderBench(); requestRender(); closeTokenMenu();
+    });
+    list.appendChild(item);
+  });
+
+  document.getElementById('tokenMenuOverlay').classList.add('open');
+}
+function closeTokenMenu(){ document.getElementById('tokenMenuOverlay').classList.remove('open'); }
+document.getElementById('tokenMenuCloseBtn').addEventListener('click', closeTokenMenu);
+
+/* ========================= ラベル編集 ========================= */
+const labelEditBtn = document.getElementById('labelEditBtn');
+const labelEditorOverlay = document.getElementById('labelEditorOverlay');
+const labelInput = document.getElementById('labelInput');
+
+function updateLabelButton(){
+  labelEditBtn.textContent = 'ラベル: ' + (layout.label ? layout.label : '未設定') + ' ✎';
+}
+labelEditBtn.addEventListener('click', ()=>{
+  labelInput.value = layout.label || '';
+  labelEditorOverlay.classList.add('open');
+  setTimeout(()=>labelInput.focus(), 50);
+});
+document.getElementById('labelCancelBtn').addEventListener('click', ()=> labelEditorOverlay.classList.remove('open'));
+document.getElementById('labelSaveBtn').addEventListener('click', ()=>{
+  layout.label = labelInput.value.trim();
+  saveLayout();
+  updateLabelButton();
+  requestRender();
+  labelEditorOverlay.classList.remove('open');
+});
+
+/* ========================= グリッド / ローテーション / リセット ========================= */
+document.getElementById('gridToggleBtn').addEventListener('click', ()=>{
+  settings.showGrid = !settings.showGrid;
+  document.getElementById('gridToggleBtn').classList.toggle('active', settings.showGrid);
+  document.getElementById('gridDefaultToggle').checked = settings.showGrid;
+  saveSettings();
+  requestRender();
+});
+
+document.getElementById('rotateBtn').addEventListener('click', ()=>{
+  if(settings.mode !== 'fixed6'){ toast('ローテーションは6人制(固定)のみ使用できます'); return; }
+  const old = Object.assign({}, layout.slots);
+  SLOT_ORDER.forEach((slot,i)=>{
+    const next = SLOT_ORDER[(i+1)%6];
+    layout.slots[next] = old[slot];
+  });
+  saveLayout();
+  requestRender();
+});
+
+document.getElementById('clearCourtBtn').addEventListener('click', ()=>{
+  if(!confirm('コート上の配置をすべてベンチに戻します。よろしいですか？')) return;
+  layout.slots = {FL:null,FC:null,FR:null,BR:null,BC:null,BL:null};
+  layout.placements = {};
+  saveLayout();
+  renderBench();
+  requestRender();
+});
+
+/* ========================= モードバッジ / UI更新 ========================= */
+const MODE_NAMES = { fixed6:'6人制(固定)', free6:'6人制(自由配置)', free9:'9人制(自由配置)', unlimited:'制限なし' };
+function updateModeUI(){
+  document.getElementById('modeBadge').textContent = MODE_NAMES[settings.mode];
+  document.getElementById('rotateBtn').style.display = settings.mode === 'fixed6' ? 'flex' : 'none';
+  document.getElementById('gridToggleBtn').classList.toggle('active', settings.showGrid);
+}
+
+/* ========================= 設定モーダル: タブ切替 ========================= */
+document.querySelectorAll('.tab').forEach(tab=>{
+  tab.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    tab.classList.add('active');
+    document.querySelectorAll('.tabpane').forEach(p=> p.style.display='none');
+    document.getElementById('tab-'+tab.dataset.tab).style.display='block';
+  });
+});
+
+document.getElementById('openSettingsBtn').addEventListener('click', ()=>{
+  renderMemberList();
+  renderSwatches();
+  renderBgOptions();
+  document.getElementById('settingsOverlay').classList.add('open');
+});
+document.getElementById('closeSettingsBtn').addEventListener('click', ()=>{
+  document.getElementById('settingsOverlay').classList.remove('open');
+});
+
+/* ---- 表示設定タブ ---- */
+document.querySelectorAll('#shapeSeg button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('#shapeSeg button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    settings.shape = btn.dataset.v;
+    saveSettings();
+    requestRender();
+    renderBench();
+  });
+});
+
+function renderSwatches(){
+  const wrap = document.getElementById('defaultColorSwatches');
+  wrap.innerHTML = '';
+  SWATCH_COLORS.forEach(c=>{
+    const s = document.createElement('div');
+    s.className = 'swatch' + (settings.defaultColor===c ? ' active':'');
+    s.style.background = c;
+    s.style.borderColor = c==='#ffffff' ? '#666' : 'transparent';
+    s.addEventListener('click', ()=>{
+      settings.defaultColor = c;
+      saveSettings();
+      renderSwatches();
+      requestRender();
+      renderBench();
+    });
+    wrap.appendChild(s);
+  });
+}
+document.querySelectorAll('#shapeSeg button').forEach(b=>{ if(b.dataset.v===settings.shape) b.classList.add('active'); else b.classList.remove('active'); });
+
+/* ---- コート/モード タブ ---- */
+const BG_PRESETS = [
+  {v:'orange', label:'オレンジコート'},
+  {v:'wood', label:'木の床'},
+  {v:'plain', label:'シンプル'},
+  {v:'custom', label:'カスタム画像'}
+];
+function renderBgOptions(){
+  const wrap = document.getElementById('bgOptions');
+  wrap.innerHTML = '';
+  BG_PRESETS.forEach(p=>{
+    const el = document.createElement('div');
+    el.className = 'bg-opt' + (settings.courtBg===p.v ? ' active':'');
+    if(p.v==='orange') el.style.background = 'linear-gradient(#e07a2e,#c9631d)';
+    if(p.v==='wood') el.style.background = 'linear-gradient(90deg,#b6884b,#c99b5f)';
+    if(p.v==='plain') el.style.background = '#22304d';
+    if(p.v==='custom'){
+      if(settings.customBgData){ el.innerHTML = '<img src="'+settings.customBgData+'">'; }
+      else el.style.background = '#3a4a6b';
+    }
+    el.innerHTML += '<span>'+p.label+'</span>';
+    el.addEventListener('click', ()=>{
+      if(p.v==='custom' && !settings.customBgData){
+        toast('先にカスタム画像をアップロードしてください');
+        return;
+      }
+      settings.courtBg = p.v;
+      saveSettings();
+      renderBgOptions();
+      requestRender();
+    });
+    wrap.appendChild(el);
+  });
+}
+document.getElementById('customBgInput').addEventListener('change', async (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const dataUrl = await resizeImageFile(file, 1200, 0.85);
+  settings.customBgData = dataUrl;
+  settings.courtBg = 'custom';
+  saveSettings();
+  renderBgOptions();
+  requestRender();
+  toast('背景画像を設定しました');
+});
+
+document.querySelectorAll('#modeSeg button').forEach(btn=>{
+  if(btn.dataset.v === settings.mode) btn.classList.add('active');
+  btn.addEventListener('click', ()=>{
+    if(btn.dataset.v === settings.mode) return;
+    if(placedMemberIds().length > 0 && !confirm('モードを変更するとコート上の配置はリセットされます。よろしいですか？')) return;
+    document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    settings.mode = btn.dataset.v;
+    layout.slots = {FL:null,FC:null,FR:null,BR:null,BC:null,BL:null};
+    layout.placements = {};
+    saveSettings(); saveLayout();
+    updateModeUI();
+    renderBench();
+    requestRender();
+  });
+});
+
+document.getElementById('gridDefaultToggle').addEventListener('change', (e)=>{
+  settings.showGrid = e.target.checked;
+  document.getElementById('gridToggleBtn').classList.toggle('active', settings.showGrid);
+  saveSettings();
+  requestRender();
+});
+
+document.querySelectorAll('#gridDivisionSeg button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('#gridDivisionSeg button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    settings.gridDivision = btn.dataset.v;
+    saveSettings();
+    requestRender();
+  });
+});
+
+/* ---- メンバー管理タブ ---- */
+document.querySelectorAll('#newMemberTypeSeg button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('#newMemberTypeSeg button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const isImg = btn.dataset.v === 'image';
+    document.getElementById('newMemberValueWrap').style.display = isImg ? 'none':'block';
+    document.getElementById('newMemberImageWrap').style.display = isImg ? 'block':'none';
+  });
+});
+document.getElementById('newMemberCustomColor').addEventListener('change', (e)=>{
+  document.getElementById('newMemberColorWrap').style.display = e.target.checked ? 'block':'none';
+});
+let newMemberColor = SWATCH_COLORS[0];
+function renderNewMemberSwatches(){
+  const wrap = document.getElementById('newMemberColorSwatches');
+  wrap.innerHTML = '';
+  SWATCH_COLORS.forEach(c=>{
+    const s = document.createElement('div');
+    s.className = 'swatch' + (newMemberColor===c ? ' active':'');
+    s.style.background = c;
+    s.style.borderColor = c==='#ffffff' ? '#666' : 'transparent';
+    s.addEventListener('click', ()=>{ newMemberColor = c; renderNewMemberSwatches(); });
+    wrap.appendChild(s);
+  });
+}
+renderNewMemberSwatches();
+
+let newMemberImageData = null;
+document.getElementById('newMemberImage').addEventListener('change', async (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  newMemberImageData = await resizeImageFile(file, 240, 0.85);
+  toast('画像を読み込みました');
+});
+
+document.getElementById('addMemberBtn').addEventListener('click', ()=>{
+  const name = document.getElementById('newMemberName').value.trim();
+  const type = document.querySelector('#newMemberTypeSeg button.active').dataset.v;
+  const value = document.getElementById('newMemberValue').value.trim();
+  const libero = document.getElementById('newMemberLibero').checked;
+  const customColor = document.getElementById('newMemberCustomColor').checked;
+
+  if(!name){ toast('管理用の名前を入力してください'); return; }
+  if(type !== 'image' && !value){ toast('表示する番号/文字を入力してください'); return; }
+  if(type === 'image' && !newMemberImageData){ toast('画像を選択してください'); return; }
+
+  const member = {
+    id: uid(), name, type,
+    value: type==='image' ? '' : value,
+    imageData: type==='image' ? newMemberImageData : null,
+    libero, customColor,
+    color: customColor ? newMemberColor : null
+  };
+  roster.push(member);
+  saveRoster();
+  ensureMemberImages();
+
+  document.getElementById('newMemberName').value = '';
+  document.getElementById('newMemberValue').value = '';
+  document.getElementById('newMemberImage').value = '';
+  document.getElementById('newMemberLibero').checked = false;
+  document.getElementById('newMemberCustomColor').checked = false;
+  document.getElementById('newMemberColorWrap').style.display = 'none';
+  newMemberImageData = null;
+
+  renderMemberList();
+  renderBench();
+  toast('名簿に追加しました');
+});
+
+function renderMemberList(){
+  const wrap = document.getElementById('memberList');
+  wrap.innerHTML = '';
+  if(roster.length === 0){
+    wrap.innerHTML = '<div class="hint">まだメンバーが登録されていません。下のフォームから追加してください。</div>';
+    return;
+  }
+  roster.forEach(m=>{
+    const row = document.createElement('div');
+    row.className = 'member-row';
+    row.innerHTML = tokenFaceHTML(m) +
+      '<div class="m-info"><div class="m-name">'+escapeHTML(m.name)+'</div>' +
+      '<div class="m-sub">'+(m.type==='number'?'番号':m.type==='text'?'文字':'画像')+
+      (m.type!=='image' ? '：'+escapeHTML(m.value) : '') +
+      (m.libero ? ' ・リベロ':'') + '</div></div>' +
+      '<div class="m-actions"><button class="smallbtn danger" data-act="del">削除</button></div>';
+    row.querySelector('[data-act=del]').addEventListener('click', ()=>{
+      if(!confirm(m.name+' を名簿から削除しますか？')) return;
+      roster = roster.filter(x=>x.id!==m.id);
+      returnToBench(m.id); // コート上にいた場合の後始末(存在しなければ何もしない)
+      saveRoster();
+      renderMemberList();
+      renderBench();
+      requestRender();
+    });
+    wrap.appendChild(row);
+  });
+}
+
+/* ========================= 保存先フォルダ (File System Access API) ========================= */
+function idbOpen(){
+  return new Promise((resolve,reject)=>{
+    const req = indexedDB.open(IDB_NAME, 1);
+    req.onupgradeneeded = ()=> req.result.createObjectStore(IDB_STORE);
+    req.onsuccess = ()=> resolve(req.result);
+    req.onerror = ()=> reject(req.error);
+  });
+}
+async function idbSet(key, val){
+  try{
+    const db = await idbOpen();
+    await new Promise((res,rej)=>{
+      const tx = db.transaction(IDB_STORE,'readwrite');
+      tx.objectStore(IDB_STORE).put(val, key);
+      tx.oncomplete = res; tx.onerror = ()=>rej(tx.error);
+    });
+  }catch(e){ console.warn('idbSet failed', e); }
+}
+async function idbGet(key){
+  try{
+    const db = await idbOpen();
+    return await new Promise((res,rej)=>{
+      const tx = db.transaction(IDB_STORE,'readonly');
+      const r = tx.objectStore(IDB_STORE).get(key);
+      r.onsuccess = ()=> res(r.result);
+      r.onerror = ()=> rej(r.error);
+    });
+  }catch(e){ return null; }
+}
+
+function fsApiSupported(){ return typeof window.showDirectoryPicker === 'function'; }
+
+function renderFolderStatus(){
+  const el = document.getElementById('folderStatus');
+  if(!fsApiSupported()){
+    el.innerHTML = 'お使いの環境ではフォルダ指定機能(File System Access API)に対応していません。保存のたびにダウンロードフォルダへ保存されます。';
+    return;
+  }
+  if(dirHandle){
+    el.innerHTML = '保存先: <span class="path">'+escapeHTML(dirHandle.name)+'</span> フォルダ';
+  } else {
+    el.textContent = '保存先フォルダは未設定です。未設定の場合は保存のたびにダウンロードされます。';
+  }
+}
+
+document.getElementById('pickFolderBtn').addEventListener('click', async ()=>{
+  if(!fsApiSupported()){ toast('この環境はフォルダ指定に対応していません'); return; }
+  try{
+    const handle = await window.showDirectoryPicker();
+    dirHandle = handle;
+    settings.saveFolderName = handle.name;
+    saveSettings();
+    await idbSet(IDB_KEY_DIR, handle);
+    renderFolderStatus();
+    toast('保存先フォルダを設定しました');
+  }catch(e){ /* ユーザーキャンセル等 */ }
+});
+
+async function verifyDirPermission(handle){
+  if(!handle) return false;
+  const opts = {mode:'readwrite'};
+  if((await handle.queryPermission(opts)) === 'granted') return true;
+  if((await handle.requestPermission(opts)) === 'granted') return true;
+  return false;
+}
+
+async function restoreDirHandle(){
+  if(!fsApiSupported()) return;
+  const handle = await idbGet(IDB_KEY_DIR);
+  if(handle){ dirHandle = handle; }
+}
+
+/* ========================= PNG保存 ========================= */
+function buildFilename(){
+  const now = new Date();
+  const pad = n=>String(n).padStart(2,'0');
+  const ts = now.getFullYear()+pad(now.getMonth()+1)+pad(now.getDate())+'_'+pad(now.getHours())+pad(now.getMinutes());
+  const safeLabel = (layout.label || '配置図').replace(/[\\\/:*?"<>|]/g,'').slice(0,30);
+  return `${safeLabel}_${ts}.png`;
+}
+
+document.getElementById('savePngBtn').addEventListener('click', async ()=>{
+  const exportCanvas = renderForExport();
+  const filename = buildFilename();
+  exportCanvas.toBlob(async (blob)=>{
+    if(!blob){ toast('画像の生成に失敗しました'); return; }
+    if(dirHandle && fsApiSupported()){
+      const ok = await verifyDirPermission(dirHandle);
+      if(ok){
+        try{
+          const fileHandle = await dirHandle.getFileHandle(filename, {create:true});
+          const writable = await fileHandle.createWritable();
+          await writable.write(blob);
+          await writable.close();
+          toast('保存しました: '+dirHandle.name+'/'+filename);
+          return;
+        }catch(e){
+          console.warn('folder save failed, falling back to download', e);
+        }
+      }
+    }
+    // フォールバック: ダウンロード
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url), 4000);
+    toast('ダウンロードしました: '+filename);
+  }, 'image/png');
+});
+
+/* ========================= 初期化 ========================= */
+async function init(){
+  loadAll();
+  ensureMemberImages();
+  setupCanvasSize();
+  window.addEventListener('resize', setupCanvasSize);
+
+  document.getElementById('versionLabel').textContent = APP_VERSION;
+  document.getElementById('gridDefaultToggle').checked = settings.showGrid;
+  document.querySelectorAll('#shapeSeg button').forEach(b=> b.classList.toggle('active', b.dataset.v===settings.shape));
+  document.querySelectorAll('#modeSeg button').forEach(b=> b.classList.toggle('active', b.dataset.v===settings.mode));
+  document.querySelectorAll('#gridDivisionSeg button').forEach(b=> b.classList.toggle('active', b.dataset.v===settings.gridDivision));
+
+  updateLabelButton();
+  updateModeUI();
+  renderBench();
+  requestRender();
+
+  await restoreDirHandle();
+  renderFolderStatus();
+}
+
+init();
+
+})();
+</script>
+</body>
+</html>
