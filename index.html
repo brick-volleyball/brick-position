@@ -729,7 +729,7 @@
 "use strict";
 
 /* ========================= 定数 ========================= */
-const APP_VERSION = "v2026-08-26 12:44";
+const APP_VERSION = "v2026-08-26 12:59";
 const LS_KEY_ROSTER = "brickpos_roster_v1";
 const LS_KEY_SETTINGS = "brickpos_settings_v1";
 const LS_KEY_LAYOUT = "brickpos_layout_v1";
@@ -946,8 +946,10 @@ function drawGuideGrid(ctx){
 
 function slotCoord(slot){
   const colX = { L: courtLeft+courtWidth/6, C: courtLeft+courtWidth/2, R: courtRight-courtWidth/6 };
-  const frontY = courtTop + (attackLineY-courtTop)/2;
-  const backY = attackLineY + (courtBottom-attackLineY)/2;
+  // 6人制(固定配置)の既定位置は、実際のアタックラインとは無関係に、
+  // コートを均等に上下2分割・左右3分割した位置(6分割グリッドと同じ考え方)に置く。
+  const frontY = courtTop + courtDepth/4;
+  const backY = courtTop + courtDepth*3/4;
   const map = {
     FL:{x:colX.L,y:frontY}, FC:{x:colX.C,y:frontY}, FR:{x:colX.R,y:frontY},
     BR:{x:colX.R,y:backY}, BC:{x:colX.C,y:backY}, BL:{x:colX.L,y:backY}
