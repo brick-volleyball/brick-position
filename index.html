@@ -721,8 +721,7 @@
     </div>
     <div class="tabs">
       <button class="tab active" data-tab="members">メンバー</button>
-      <button class="tab" data-tab="display">表示</button>
-      <button class="tab" data-tab="court">コート/モード</button>
+      <button class="tab" data-tab="display">表示/モード</button>
       <button class="tab" data-tab="save">保存先</button>
       <button class="tab" data-tab="account">アカウント</button>
     </div>
@@ -828,9 +827,7 @@
           <div class="swatches" id="defaultColorSwatches"></div>
         </div>
         <div class="hint">個別に枠線色を指定したメンバーは、メンバー設定側の色が優先されます。</div>
-      </div>
-
-      <div class="tabpane" id="tab-court" style="display:none;">
+        <hr class="sep">
         <div class="field">
           <label>コート背景</label>
           <div class="bg-thumb" id="bgOptions"></div>
@@ -908,7 +905,7 @@
 "use strict";
 
 /* ========================= 定数 ========================= */
-const APP_VERSION = "v2026-08-26 17:45";
+const APP_VERSION = "v2026-08-26 18:00";
 const LS_KEY_ROSTER = "brickpos_roster_v1";
 const LS_KEY_SETTINGS = "brickpos_settings_v1";
 const LS_KEY_LAYOUT = "brickpos_layout_v1";
