@@ -414,6 +414,14 @@
     padding:12px;
     margin-top:12px;
   }
+  .addform-title{
+    font-size:13px;
+    font-weight:700;
+    color:var(--text);
+    margin-bottom:12px;
+  }
+  .addform.editing{border-style:solid;border-color:var(--turquoise);}
+  .addform.editing .addform-title{color:var(--turquoise);}
   .checkbox-row{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--sub);margin-bottom:10px;}
   .checkbox-row input{width:16px;height:16px;}
   .filebtn{
@@ -607,7 +615,8 @@
         </div>
         <div class="hint" style="margin-bottom:12px;">書き出したJSONファイルは、他の端末やブラウザに名簿を移す・バックアップを取る用途に使えます。</div>
         <div class="memberlist" id="memberList"></div>
-        <div class="addform">
+        <div class="addform" id="addform">
+          <div class="addform-title" id="addformTitle">＋ 新しいメンバーを追加</div>
           <div class="field">
             <label>管理用の名前(表示はされません)</label>
             <input type="text" id="newMemberName" placeholder="例: 山田太郎">
@@ -626,6 +635,10 @@
           </div>
           <div class="field" id="newMemberImageWrap" style="display:none;">
             <label>表示する画像</label>
+            <div id="newMemberImagePreviewWrap" style="display:none;margin-bottom:8px;">
+              <span class="token-face" id="newMemberImagePreview" style="width:46px;height:46px;display:inline-flex;"></span>
+              <span class="hint" style="margin-left:8px;">現在の画像(そのままにする場合は変更不要)</span>
+            </div>
             <label class="filebtn">画像を選択<input type="file" accept="image/*" id="newMemberImage"></label>
           </div>
           <div class="field">
@@ -646,7 +659,10 @@
           <div class="field" id="newMemberColorWrap" style="display:none;">
             <div class="swatches" id="newMemberColorSwatches"></div>
           </div>
-          <button class="btn btn-primary" id="addMemberBtn" style="width:100%;">＋ 名簿に追加</button>
+          <div class="row" style="display:flex;gap:8px;">
+            <button class="btn btn-secondary" id="cancelEditMemberBtn" style="display:none;">キャンセル</button>
+            <button class="btn btn-primary" id="addMemberBtn" style="width:100%;">＋ 名簿に追加</button>
+          </div>
         </div>
       </div>
 
@@ -713,7 +729,7 @@
 "use strict";
 
 /* ========================= 定数 ========================= */
-const APP_VERSION = "v2026-08-26 11:20";
+const APP_VERSION = "v2026-08-26 11:35";
 const LS_KEY_ROSTER = "brickpos_roster_v1";
 const LS_KEY_SETTINGS = "brickpos_settings_v1";
 const LS_KEY_LAYOUT = "brickpos_layout_v1";
@@ -1412,6 +1428,7 @@ document.getElementById('openSettingsBtn').addEventListener('click', ()=>{
 });
 document.getElementById('closeSettingsBtn').addEventListener('click', ()=>{
   document.getElementById('settingsOverlay').classList.remove('open');
+  if(editingMemberId) resetMemberForm(); // 編集途中のまま閉じた場合はフォームを初期状態に戻す(保存前のデータなので消えるのは入力欄の内容のみ)
 });
 
 /* ---- 表示設定タブ ---- */
@@ -1568,36 +1585,117 @@ document.getElementById('newMemberImage').addEventListener('change', async (e)=>
   toast('画像を読み込みました');
 });
 
+/* ---- 既存メンバーの編集 ---- */
+let editingMemberId = null;
+let editingOriginalImageData = null;
+
+function setMemberFormType(type){
+  document.querySelectorAll('#newMemberTypeSeg button').forEach(b=>b.classList.toggle('active', b.dataset.v===type));
+  const isImg = type === 'image';
+  document.getElementById('newMemberValueWrap').style.display = isImg ? 'none':'block';
+  document.getElementById('newMemberImageWrap').style.display = isImg ? 'block':'none';
+}
+
+function resetMemberForm(){
+  editingMemberId = null;
+  editingOriginalImageData = null;
+  newMemberImageData = null;
+  document.getElementById('newMemberName').value = '';
+  document.getElementById('newMemberValue').value = '';
+  document.getElementById('newMemberImage').value = '';
+  document.getElementById('newMemberImagePreviewWrap').style.display = 'none';
+  setMemberFormType('number');
+  document.querySelectorAll('#newMemberPositionSeg button').forEach((b,i)=>b.classList.toggle('active', i===0));
+  document.getElementById('newMemberCustomColor').checked = false;
+  document.getElementById('newMemberColorWrap').style.display = 'none';
+  newMemberColor = SWATCH_COLORS[0];
+  renderNewMemberSwatches();
+  document.getElementById('addformTitle').textContent = '＋ 新しいメンバーを追加';
+  document.getElementById('addform').classList.remove('editing');
+  document.getElementById('addMemberBtn').textContent = '＋ 名簿に追加';
+  document.getElementById('cancelEditMemberBtn').style.display = 'none';
+}
+
+function startEditMember(id){
+  const m = memberById(id);
+  if(!m) return;
+  editingMemberId = id;
+  editingOriginalImageData = m.imageData || null;
+  newMemberImageData = null;
+
+  document.getElementById('newMemberName').value = m.name || '';
+  setMemberFormType(m.type);
+  document.getElementById('newMemberValue').value = m.type !== 'image' ? (m.value || '') : '';
+  document.getElementById('newMemberImage').value = '';
+  const previewWrap = document.getElementById('newMemberImagePreviewWrap');
+  if(m.type === 'image' && m.imageData){
+    previewWrap.style.display = 'block';
+    document.getElementById('newMemberImagePreview').innerHTML = '<img src="'+m.imageData+'" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;">';
+  } else {
+    previewWrap.style.display = 'none';
+  }
+  document.querySelectorAll('#newMemberPositionSeg button').forEach(b=>b.classList.toggle('active', b.dataset.v === (m.position||'')));
+  document.getElementById('newMemberCustomColor').checked = !!m.customColor;
+  document.getElementById('newMemberColorWrap').style.display = m.customColor ? 'block':'none';
+  newMemberColor = m.color || SWATCH_COLORS[0];
+  renderNewMemberSwatches();
+
+  document.getElementById('addformTitle').textContent = '✎ 編集中: ' + (m.name || '');
+  document.getElementById('addform').classList.add('editing');
+  document.getElementById('addMemberBtn').textContent = '✎ 変更を保存';
+  document.getElementById('cancelEditMemberBtn').style.display = 'block';
+  document.getElementById('addform').scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+function cancelEditMember(){
+  resetMemberForm();
+}
+document.getElementById('cancelEditMemberBtn').addEventListener('click', cancelEditMember);
+
 document.getElementById('addMemberBtn').addEventListener('click', ()=>{
   const name = document.getElementById('newMemberName').value.trim();
   const type = document.querySelector('#newMemberTypeSeg button.active').dataset.v;
   const value = document.getElementById('newMemberValue').value.trim();
   const position = document.querySelector('#newMemberPositionSeg button.active').dataset.v;
   const customColor = document.getElementById('newMemberCustomColor').checked;
+  const resolvedImageData = type === 'image' ? (newMemberImageData || (editingMemberId ? editingOriginalImageData : null)) : null;
 
   if(!name){ toast('管理用の名前を入力してください'); return; }
   if(type !== 'image' && !value){ toast('表示する番号/文字を入力してください'); return; }
-  if(type === 'image' && !newMemberImageData){ toast('画像を選択してください'); return; }
+  if(type === 'image' && !resolvedImageData){ toast('画像を選択してください'); return; }
+
+  if(editingMemberId){
+    const m = memberById(editingMemberId);
+    if(!m){ toast('編集対象が見つかりませんでした'); resetMemberForm(); return; }
+    m.name = name;
+    m.type = type;
+    m.value = type==='image' ? '' : value;
+    m.imageData = resolvedImageData;
+    m.position = position;
+    m.customColor = customColor;
+    m.color = customColor ? newMemberColor : null;
+    delete m._img; // 画像が変わっている可能性があるのでキャッシュを破棄し再読込させる
+    saveRoster();
+    ensureMemberImages();
+    resetMemberForm();
+    renderMemberList();
+    renderBench();
+    requestRender(); // コートに配置済みの場合、見た目を即時反映
+    toast('メンバー情報を更新しました');
+    return;
+  }
 
   const member = {
     id: uid(), name, type,
     value: type==='image' ? '' : value,
-    imageData: type==='image' ? newMemberImageData : null,
+    imageData: resolvedImageData,
     position, customColor,
     color: customColor ? newMemberColor : null
   };
   roster.push(member);
   saveRoster();
   ensureMemberImages();
-
-  document.getElementById('newMemberName').value = '';
-  document.getElementById('newMemberValue').value = '';
-  document.getElementById('newMemberImage').value = '';
-  document.querySelectorAll('#newMemberPositionSeg button').forEach((b,i)=>b.classList.toggle('active', i===0));
-  document.getElementById('newMemberCustomColor').checked = false;
-  document.getElementById('newMemberColorWrap').style.display = 'none';
-  newMemberImageData = null;
-
+  resetMemberForm();
   renderMemberList();
   renderBench();
   toast('名簿に追加しました');
@@ -1618,9 +1716,11 @@ function renderMemberList(){
       '<div class="m-sub">'+(m.type==='number'?'番号':m.type==='text'?'文字':'画像')+
       (m.type!=='image' ? '：'+escapeHTML(m.value) : '') +
       (m.position && POSITION_META[m.position] ? ' ・'+POSITION_META[m.position].label+'('+m.position+')' : '') + '</div></div>' +
-      '<div class="m-actions"><button class="smallbtn danger" data-act="del">削除</button></div>';
+      '<div class="m-actions"><button class="smallbtn" data-act="edit">編集</button><button class="smallbtn danger" data-act="del">削除</button></div>';
+    row.querySelector('[data-act=edit]').addEventListener('click', ()=> startEditMember(m.id));
     row.querySelector('[data-act=del]').addEventListener('click', ()=>{
       if(!confirm(m.name+' を名簿から削除しますか？')) return;
+      if(editingMemberId === m.id) cancelEditMember();
       roster = roster.filter(x=>x.id!==m.id);
       returnToBench(m.id); // コート上にいた場合の後始末(存在しなければ何もしない)
       saveRoster();
