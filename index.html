@@ -308,6 +308,9 @@
   }
   .gate-footer{margin-top:22px;font-size:10.5px;color:#5c6884;line-height:1.6;}
   .gate-footer a{color:var(--sub);}
+  .gate-tokushoho-link{margin-top:12px;text-align:center;}
+  .gate-tokushoho-link a{font-size:10.5px;color:#5c6884;text-decoration:underline;}
+  .gate-tokushoho-link a:hover{color:var(--sub);}
 
   /* modal */
   .modal-overlay{
@@ -634,6 +637,7 @@
     <div class="gate-result" id="gateInactive">
       <p>現在、サポーター登録が確認できませんでした。BRICKサポーターになると、このツールをご利用いただけます。</p>
       <a href="https://buy.stripe.com/5kQ14f75z1tG1Ungkt4ZG01" class="btn btn-primary gate-pay-btn" target="_blank" rel="noopener">サポーターになる</a>
+      <p class="gate-tokushoho-link"><a href="https://brick-volleyball.github.io/tools/tokushoho.html" target="_blank" rel="noopener">特定商取引法に基づく表記</a></p>
       <button class="gate-relogin" id="gateReloginBtn">別のGoogleアカウントでログインし直す</button>
     </div>
 
@@ -905,7 +909,7 @@
 "use strict";
 
 /* ========================= 定数 ========================= */
-const APP_VERSION = "v2026-08-26 18:00";
+const APP_VERSION = "v2026-08-27 13:00";
 const LS_KEY_ROSTER = "brickpos_roster_v1";
 const LS_KEY_SETTINGS = "brickpos_settings_v1";
 const LS_KEY_LAYOUT = "brickpos_layout_v1";
